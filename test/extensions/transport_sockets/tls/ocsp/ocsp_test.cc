@@ -19,15 +19,13 @@ namespace TransportSockets {
 namespace Tls {
 namespace Ocsp {
 
-namespace {
-
 namespace CertUtility = Envoy::Extensions::TransportSockets::Tls::Utility;
 
 class OcspFullResponseParsingTest : public testing::Test {
 public:
   static void SetUpTestSuite() { // NOLINT(readability-identifier-naming)
     TestEnvironment::exec({TestEnvironment::runfilesPath(
-        "test/extensions/transport_sockets/tls/ocsp/gen_unittest_ocsp_data.sh")});
+        "test/extensions/transport_sockets/tls/gen_unittest_ocsp_data.sh")});
   }
 
   std::string fullPath(std::string filename) {
@@ -117,7 +115,7 @@ TEST_F(OcspFullResponseParsingTest, NoResponseBodyTest) {
   std::vector<uint8_t> data = {
       // SEQUENCE
       0x30, 3,
-      // OcspResponseStatus - InternalError
+      // OcspResponseStatus - INTERNAL_ERROR
       0xau, 1, 2,
       // no response bytes
   };
@@ -162,12 +160,12 @@ public:
 };
 
 TEST_F(Asn1OcspUtilityTest, ParseResponseStatusTest) {
-  expectResponseStatus(0, OcspResponseStatus::Successful);
-  expectResponseStatus(1, OcspResponseStatus::MalformedRequest);
-  expectResponseStatus(2, OcspResponseStatus::InternalError);
-  expectResponseStatus(3, OcspResponseStatus::TryLater);
-  expectResponseStatus(5, OcspResponseStatus::SigRequired);
-  expectResponseStatus(6, OcspResponseStatus::Unauthorized);
+  expectResponseStatus(0, OcspResponseStatus::SUCCESSFUL);
+  expectResponseStatus(1, OcspResponseStatus::MALFORMED_REQUEST);
+  expectResponseStatus(2, OcspResponseStatus::INTERNAL_ERROR);
+  expectResponseStatus(3, OcspResponseStatus::TRY_LATER);
+  expectResponseStatus(5, OcspResponseStatus::SIG_REQUIRED);
+  expectResponseStatus(6, OcspResponseStatus::UNAUTHORIZED);
 }
 
 TEST_F(Asn1OcspUtilityTest, ParseMethodWrongTagTest) {
@@ -188,7 +186,7 @@ TEST_F(Asn1OcspUtilityTest, ParseResponseDataBadResponderIdVariantTest) {
       0,
       1,
       0,
-      // Invalid Responder ID tag 3
+      // Invalid Responeder ID tag 3
       3,
       1,
       0,
@@ -203,14 +201,14 @@ TEST_F(Asn1OcspUtilityTest, ParseOcspResponseBytesMissingTest) {
   std::vector<uint8_t> data = {
       // SEQUENCE
       0x30, 3,
-      // OcspResponseStatus - InternalError
+      // OcspResponseStatus - INTERNAL_ERROR
       0xau, 1, 2,
       // no response bytes
   };
   CBS cbs;
   CBS_init(&cbs, data.data(), data.size());
   auto response = Asn1OcspUtility::parseOcspResponse(cbs);
-  EXPECT_EQ(response->status_, OcspResponseStatus::InternalError);
+  EXPECT_EQ(response->status_, OcspResponseStatus::INTERNAL_ERROR);
   EXPECT_TRUE(response->response_ == nullptr);
 }
 

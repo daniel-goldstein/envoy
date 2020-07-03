@@ -210,6 +210,38 @@ public:
    */
   bool isExpired();
 
+  OcspResponseStatus status_;
+  ResponsePtr response_;
+};
+
+class OcspResponseWrapper {
+public:
+  OcspResponseWrapper(std::string der_response, TimeSource& time_source);
+
+  const std::string& rawBytes() { return raw_bytes_; }
+
+  /**
+   * @return OcspResponseStatus whether the OCSP response was successfully created
+   * or status indicating an error in the OCSP process
+   */
+  OcspResponseStatus getResponseStatus() { return response_->status_; }
+
+  /**
+   * @returns CertStatus for the single SSL certificate reported on by this response
+   */
+  CertStatus getCertRevocationStatus() { return response_->response_->getCertRevocationStatus(); }
+
+  /**
+   * @param cert a X509& SSL certificate
+   * @returns bool whether this OCSP response contains the revocation status of |cert|
+   */
+  bool matchesCertificate(X509& cert);
+
+  /**
+   * @returns bool if the OCSP response can no longer be considered valid
+   */
+  bool isExpired();
+
 private:
   const std::vector<uint8_t> raw_bytes_;
   const std::unique_ptr<OcspResponse> response_;
