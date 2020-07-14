@@ -71,6 +71,7 @@ envoy_cc_test(
     ],
     data = [
         "gen_unittest_certs.sh",
+        "gen_unittest_ocsp_data.sh",
         "//test/extensions/transport_sockets/tls/test_data:certs",
     ],
     deps = [

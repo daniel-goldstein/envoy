@@ -26,6 +26,9 @@ TlsCertificateConfigImpl::TlsCertificateConfigImpl(
       password_(Config::DataSource::read(config.password(), true, api)),
       password_path_(Config::DataSource::getPath(config.password())
                          .value_or(password_.empty() ? EMPTY_STRING : INLINE_STRING)),
+      ocsp_staple_(Config::DataSource::read(config.ocsp_staple(), true, api)),
+      ocsp_staple_path_(Config::DataSource::getPath(config.ocsp_staple())
+                            .value_or(ocsp_staple_.empty() ? EMPTY_STRING : INLINE_STRING)),
       private_key_method_(
           factory_context != nullptr && config.has_private_key_provider()
               ? factory_context->sslContextManager()

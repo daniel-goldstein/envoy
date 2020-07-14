@@ -1675,6 +1675,22 @@ TEST_F(ServerContextConfigImplTest, PrivateKeyMethodLoadFailureBothKeyAndMethod)
       "Certificate configuration can't have both private_key and private_key_provider");
 }
 
+TEST_F(ServerContextConfigImplTest, TestOcspStapleValid) {
+  envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext tls_context;
+  const std::string tls_certificate_yaml = R"EOF(
+  certificate_chain:
+    filename: "{{ test_rundir }}/test/extensions/transport_sockets/tls/test_data/selfsigned_cert.pem"
+  private_key:
+    filename: "{{ test_rundir }}/test/extensions/transport_sockets/tls/test_data/selfsigned_key.pem"
+  ocsp_staple:
+    inline_string: "asldkfjasldkfj"
+  )EOF";
+
+  TestUtility::loadFromYaml(TestEnvironment::substitute(tls_certificate_yaml),
+                            *tls_context.mutable_common_tls_context()->add_tls_certificates());
+  EXPECT_NO_THROW(ServerContextConfigImpl server_context_config(tls_context, factory_context_));
+}
+
 } // namespace Tls
 } // namespace TransportSockets
 } // namespace Extensions
