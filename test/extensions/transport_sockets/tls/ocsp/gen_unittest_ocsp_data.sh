@@ -6,11 +6,13 @@ set -e
 
 trap cleanup EXIT
 cleanup() {
-  rm *_index*
-  rm *.csr
-  rm *.cnf
-  rm *_serial*
+  rm -f *_index*
+  rm -f *.csr
+  rm -f *.cnf
+  rm -f *_serial*
 }
+
+cleanup
 
 [[ -z "${TEST_TMPDIR}" ]] && TEST_TMPDIR="$(cd $(dirname $0) && pwd)"
 
