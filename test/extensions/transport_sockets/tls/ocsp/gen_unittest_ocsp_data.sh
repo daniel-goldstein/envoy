@@ -12,12 +12,12 @@ cleanup() {
   rm -f *_serial*
 }
 
-cleanup
-
 [[ -z "${TEST_TMPDIR}" ]] && TEST_TMPDIR="$(cd $(dirname $0) && pwd)"
 
 TEST_OCSP_DIR="${TEST_TMPDIR}/ocsp_test_data"
 mkdir -p "${TEST_OCSP_DIR}"
+
+rm -f ${TEST_OCSP_DIR}/*
 
 cd $TEST_OCSP_DIR
 

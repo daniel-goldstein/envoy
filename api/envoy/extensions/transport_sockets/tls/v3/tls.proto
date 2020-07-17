@@ -54,7 +54,7 @@ message UpstreamTlsContext {
   google.protobuf.UInt32Value max_session_keys = 4;
 }
 
-// [#next-free-field: 8]
+// [#next-free-field: 9]
 message DownstreamTlsContext {
   option (udpa.annotations.versioning).previous_message_type =
       "envoy.api.v2.auth.DownstreamTlsContext";
@@ -112,7 +112,7 @@ message DownstreamTlsContext {
 
     // OCSP responses are optional. Invalid or expired OCSP
     // responses are rejected at config time. If an OCSP
-    // responses expires before a config update, subsequent
+    // response expires before a config update, subsequent
     // TLS handshakes for that certificate are aborted.
     REJECT_CONNECTION_ON_EXPIRED = 2;
   }

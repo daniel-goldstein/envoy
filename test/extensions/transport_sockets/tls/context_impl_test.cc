@@ -571,6 +571,36 @@ TEST_F(SslContextImplTest, MustHaveSubjectOrSAN) {
                           EnvoyException, "has neither subject CN nor SAN names");
 }
 
+// TODO I copy and pasted this from TicketTest, be
+// a better samaritan.
+class SslServerContextImplOcspTest : public SslContextImplTest {
+public:
+  Envoy::Ssl::ServerContextSharedPtr loadConfig(ServerContextConfigImpl& cfg) {
+    return manager_.createSslServerContext(store_, cfg, std::vector<std::string>{});
+  }
+
+  Envoy::Ssl::ServerContextSharedPtr loadConfigYaml(const std::string& yaml) {
+    envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext tls_context;
+    TestUtility::loadFromYaml(TestEnvironment::substitute(yaml), tls_context);
+    ServerContextConfigImpl cfg(tls_context, factory_context_);
+    return loadConfig(cfg);
+  }
+};
+
+TEST_F(SslServerContextImplOcspTest, TestOcspStaple) {
+  const std::string tls_context_yaml = R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_cert.pem"
+      private_key:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem"
+      ocsp_staple:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der"
+  )EOF";
+  auto server_context = loadConfigYaml(tls_context_yaml);
+}
+
 class SslServerContextImplTicketTest : public SslContextImplTest {
 public:
   void loadConfig(ServerContextConfigImpl& cfg) {
@@ -1673,22 +1703,6 @@ TEST_F(ServerContextConfigImplTest, PrivateKeyMethodLoadFailureBothKeyAndMethod)
   EXPECT_THROW_WITH_MESSAGE(
       ServerContextConfigImpl server_context_config(tls_context, factory_context_), EnvoyException,
       "Certificate configuration can't have both private_key and private_key_provider");
-}
-
-TEST_F(ServerContextConfigImplTest, TestOcspStapleValid) {
-  envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext tls_context;
-  const std::string tls_certificate_yaml = R"EOF(
-  certificate_chain:
-    filename: "{{ test_tmpdir }}/ocsp_test_data/good_cert.pem"
-  private_key:
-    filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem"
-  ocsp_staple:
-    filename: "{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der"
-  )EOF";
-
-  TestUtility::loadFromYaml(TestEnvironment::substitute(tls_certificate_yaml),
-                            *tls_context.mutable_common_tls_context()->add_tls_certificates());
-  EXPECT_NO_THROW(ServerContextConfigImpl server_context_config(tls_context, factory_context_));
 }
 
 } // namespace Tls

@@ -18,6 +18,7 @@
 #include "common/stats/symbol_table_impl.h"
 
 #include "extensions/transport_sockets/tls/context_manager_impl.h"
+#include "envoy/extensions/transport_sockets/tls/v3/cert.pb.h"
 
 #include "absl/synchronization/mutex.h"
 #include "openssl/ssl.h"
@@ -168,12 +169,14 @@ protected:
     bssl::UniquePtr<SSL_CTX> ssl_ctx_;
     bssl::UniquePtr<X509> cert_chain_;
     std::string cert_chain_file_path_;
+    std::string ocsp_staple_;
     bool is_ecdsa_{};
     Ssl::PrivateKeyMethodProviderSharedPtr private_key_method_provider_{};
 
     std::string getCertChainFileName() const { return cert_chain_file_path_; };
     void addClientValidationContext(const Envoy::Ssl::CertificateValidationContextConfig& config,
                                     bool require_client_cert);
+    void stapleOcspResponse(std::string& ocsp_staple);
     bool isCipherEnabled(uint16_t cipher_id, uint16_t client_version);
     Envoy::Ssl::PrivateKeyMethodProviderSharedPtr getPrivateKeyMethodProvider() {
       return private_key_method_provider_;
@@ -248,6 +251,7 @@ private:
   // Select the TLS certificate context in SSL_CTX_set_select_certificate_cb() callback with
   // ClientHello details.
   enum ssl_select_cert_result_t selectTlsContext(const SSL_CLIENT_HELLO* ssl_client_hello);
+  /* const envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::OcspStaplePolicy ocsp_staple_policy_; */
 
   SessionContextID generateHashForSessionContextId(const std::vector<std::string>& server_names);
 

@@ -419,6 +419,12 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
       }
 #endif
     }
+
+    // TODO Validate here. Throw exceptions when necessary
+    auto& ocsp_staple = tls_certificate.ocspStaple();
+    if (!ocsp_staple.empty()) {
+      ctx.ocsp_staple_ = ocsp_staple;
+    }
   }
 
   // use the server's cipher list preferences
@@ -1372,6 +1378,15 @@ void ServerContextImpl::TlsContext::addClientValidationContext(
   // SSL_VERIFY_PEER or stronger mode was already set in ContextImpl::ContextImpl().
   if (require_client_cert) {
     SSL_CTX_set_verify(ssl_ctx_.get(), SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
+  }
+}
+
+void ServerContextImpl::TlsContext::stapleOcspResponse(std::string& ocsp_staple) {
+  auto *resp = reinterpret_cast<const uint8_t *>(ocsp_staple.c_str());
+  // Check to see if this is necessary or only on the client side
+  SSL_CTX_enable_ocsp_stapling(ssl_ctx_.get());
+  if (!SSL_CTX_set_ocsp_response(ssl_ctx_.get(), resp, ocsp_staple.size())) {
+    throw EnvoyException("Failed to set ocsp response");
   }
 }
 
