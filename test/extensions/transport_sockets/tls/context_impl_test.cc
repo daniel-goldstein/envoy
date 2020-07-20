@@ -597,6 +597,7 @@ TEST_F(SslServerContextImplOcspTest, TestOcspStaple) {
         filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem"
       ocsp_staple:
         filename: "{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der"
+  ocsp_staple_policy: 1
   )EOF";
   auto server_context = loadConfigYaml(tls_context_yaml);
 }

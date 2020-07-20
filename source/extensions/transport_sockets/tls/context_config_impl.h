@@ -162,7 +162,7 @@ private:
   static const std::string DEFAULT_CURVES;
 
   const bool require_client_certificate_;
-  /* const bool ocsp_staple_policy_; */
+  const bool ocsp_staple_policy_;
   std::vector<SessionTicketKey> session_ticket_keys_;
   const Secret::TlsSessionTicketKeysConfigProviderSharedPtr session_ticket_keys_provider_;
   Envoy::Common::CallbackHandle* stk_update_callback_handle_{};
