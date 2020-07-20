@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "envoy/extensions/transport_sockets/tls/v3/cert.pb.h"
 #include "envoy/network/transport_socket.h"
 #include "envoy/ssl/context.h"
 #include "envoy/ssl/context_config.h"
@@ -18,7 +19,6 @@
 #include "common/stats/symbol_table_impl.h"
 
 #include "extensions/transport_sockets/tls/context_manager_impl.h"
-#include "envoy/extensions/transport_sockets/tls/v3/cert.pb.h"
 
 #include "absl/synchronization/mutex.h"
 #include "openssl/ssl.h"
@@ -251,7 +251,8 @@ private:
   // Select the TLS certificate context in SSL_CTX_set_select_certificate_cb() callback with
   // ClientHello details.
   enum ssl_select_cert_result_t selectTlsContext(const SSL_CLIENT_HELLO* ssl_client_hello);
-  /* const envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::OcspStaplePolicy ocsp_staple_policy_; */
+  /* const envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::OcspStaplePolicy
+   * ocsp_staple_policy_; */
 
   SessionContextID generateHashForSessionContextId(const std::vector<std::string>& server_names);
 

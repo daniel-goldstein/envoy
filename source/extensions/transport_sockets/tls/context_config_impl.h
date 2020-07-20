@@ -135,7 +135,8 @@ public:
 
   // Ssl::ServerContextConfig
   bool requireClientCertificate() const override { return require_client_certificate_; }
-  /* envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::OcspStaplePolicy ocspStaplePolicy() const override { */
+  /* envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::OcspStaplePolicy
+   * ocspStaplePolicy() const override { */
   /*   return ocsp_staple_policy_; */
   /* } */
   const std::vector<SessionTicketKey>& sessionTicketKeys() const override {

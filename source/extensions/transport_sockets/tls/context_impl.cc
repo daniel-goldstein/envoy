@@ -1382,7 +1382,7 @@ void ServerContextImpl::TlsContext::addClientValidationContext(
 }
 
 void ServerContextImpl::TlsContext::stapleOcspResponse(std::string& ocsp_staple) {
-  auto *resp = reinterpret_cast<const uint8_t *>(ocsp_staple.c_str());
+  auto* resp = reinterpret_cast<const uint8_t*>(ocsp_staple.c_str());
   // Check to see if this is necessary or only on the client side
   SSL_CTX_enable_ocsp_stapling(ssl_ctx_.get());
   if (!SSL_CTX_set_ocsp_response(ssl_ctx_.get(), resp, ocsp_staple.size())) {

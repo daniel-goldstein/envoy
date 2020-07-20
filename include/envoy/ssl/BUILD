@@ -29,6 +29,7 @@ envoy_cc_library(
     deps = [
         ":certificate_validation_context_config_interface",
         ":tls_certificate_config_interface",
+        "@envoy_api//envoy/extensions/transport_sockets/tls/v3:pkg_cc_proto",
     ],
 )
 

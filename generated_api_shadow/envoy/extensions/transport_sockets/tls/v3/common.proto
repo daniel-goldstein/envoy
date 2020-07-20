@@ -150,7 +150,6 @@ message TlsCertificate {
   // TLS private key is not password encrypted.
   config.core.v3.DataSource password = 3 [(udpa.annotations.sensitive) = true];
 
-  // [#not-implemented-hide:]
   config.core.v3.DataSource ocsp_staple = 4;
 
   // [#not-implemented-hide:]

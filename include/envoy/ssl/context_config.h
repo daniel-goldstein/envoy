@@ -7,9 +7,9 @@
 #include <vector>
 
 #include "envoy/common/pure.h"
+#include "envoy/extensions/transport_sockets/tls/v3/cert.pb.h"
 #include "envoy/ssl/certificate_validation_context_config.h"
 #include "envoy/ssl/tls_certificate_config.h"
-#include "envoy/extensions/transport_sockets/tls/v3/cert.pb.h"
 
 #include "absl/types/optional.h"
 
@@ -118,7 +118,8 @@ public:
    */
   virtual bool requireClientCertificate() const PURE;
 
-  /* virtual envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::OcspStaplePolicy ocspStaplePolicy() const PURE; */
+  /* virtual envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::OcspStaplePolicy
+   * ocspStaplePolicy() const PURE; */
 
   /**
    * @return The keys to use for encrypting and decrypting session tickets.
