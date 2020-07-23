@@ -17,6 +17,7 @@ envoy_cc_test(
     ],
     data = [
         "gen_unittest_certs.sh",
+        "gen_unittest_ocsp_data.sh",
         # TODO(mattklein123): We should consolidate all of our test certs in a single place as
         # right now we have a bunch of duplication which is confusing.
         "//test/config/integration/certs",
@@ -104,6 +105,7 @@ envoy_cc_test(
     ],
     data = [
         "gen_unittest_certs.sh",
+        "gen_unittest_ocsp_data.sh",
         "//test/extensions/transport_sockets/tls/test_data:certs",
     ],
     external_deps = ["ssl"],

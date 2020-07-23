@@ -423,7 +423,7 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
     // TODO Validate here. Throw exceptions when necessary
     auto& ocsp_staple = tls_certificate.ocspStaple();
     if (!ocsp_staple.empty()) {
-      ctx.ocsp_staple_ = ocsp_staple;
+      ctx.ocsp_response_ = std::make_unique<Ocsp::OcspResponseWrapper>(ocsp_staple, time_source_);
     }
   }
 
@@ -991,7 +991,7 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
                                      const Envoy::Ssl::ServerContextConfig& config,
                                      const std::vector<std::string>& server_names,
                                      TimeSource& time_source)
-    : ContextImpl(scope, config, time_source), session_ticket_keys_(config.sessionTicketKeys()) {
+    : ContextImpl(scope, config, time_source), session_ticket_keys_(config.sessionTicketKeys()), ocsp_staple_policy_(config.ocspStaplePolicy()) {
   if (config.tlsCertificates().empty()) {
     throw EnvoyException("Server TlsCertificates must have a certificate specified");
   }
@@ -1320,13 +1320,25 @@ bool ServerContextImpl::isClientEcdsaCapable(const SSL_CLIENT_HELLO* ssl_client_
   return false;
 }
 
+bool ServerContextImpl::configureOcspStapling(const ContextImpl::TlsContext& ctx) {
+  if (ocsp_response) {
+    bool responseIsExpired = ctx.ocsp_response_->isExpired();
+    if (!responseIsExpired) {
+      ctx.stapleOcspResponse();
+      return true;
+    }
+  }
+
+  return true;
+}
+
 enum ssl_select_cert_result_t
 ServerContextImpl::selectTlsContext(const SSL_CLIENT_HELLO* ssl_client_hello) {
   const bool client_ecdsa_capable = isClientEcdsaCapable(ssl_client_hello);
   // Fallback on first certificate.
   const TlsContext* selected_ctx = &tls_contexts_[0];
   for (const auto& ctx : tls_contexts_) {
-    if (client_ecdsa_capable == ctx.is_ecdsa_) {
+    if (client_ecdsa_capable == ctx.is_ecdsa_ && configureOcspStapling(ctx)) {
       selected_ctx = &ctx;
       break;
     }
@@ -1381,12 +1393,13 @@ void ServerContextImpl::TlsContext::addClientValidationContext(
   }
 }
 
-void ServerContextImpl::TlsContext::stapleOcspResponse(std::string& ocsp_staple) {
-  auto* resp = reinterpret_cast<const uint8_t*>(ocsp_staple.c_str());
+void ServerContextImpl::TlsContext::stapleOcspResponse() {
+  const std::string& ocsp_response_bytes = ocsp_response_->rawBytes();
+  auto* resp = reinterpret_cast<const uint8_t*>(ocsp_response_bytes.c_str());
   // Check to see if this is necessary or only on the client side
   SSL_CTX_enable_ocsp_stapling(ssl_ctx_.get());
-  if (!SSL_CTX_set_ocsp_response(ssl_ctx_.get(), resp, ocsp_staple.size())) {
-    throw EnvoyException("Failed to set ocsp response");
+  if (!SSL_CTX_set_ocsp_response(ssl_ctx_.get(), resp, ocsp_response_bytes.size())) {
+    throw EnvoyException("Failed to set ocsp response in SSL_CTX");
   }
 }
 

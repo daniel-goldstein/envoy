@@ -118,8 +118,7 @@ public:
    */
   virtual bool requireClientCertificate() const PURE;
 
-  /* virtual envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::OcspStaplePolicy
-   * ocspStaplePolicy() const PURE; */
+  virtual envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::OcspStaplePolicy ocspStaplePolicy() const PURE;
 
   /**
    * @return The keys to use for encrypting and decrypting session tickets.
