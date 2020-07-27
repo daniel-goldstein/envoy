@@ -1321,12 +1321,9 @@ bool ServerContextImpl::isClientEcdsaCapable(const SSL_CLIENT_HELLO* ssl_client_
 }
 
 bool ServerContextImpl::configureOcspStapling(const ContextImpl::TlsContext& ctx) {
-  if (ocsp_response) {
-    bool responseIsExpired = ctx.ocsp_response_->isExpired();
-    if (!responseIsExpired) {
-      ctx.stapleOcspResponse();
-      return true;
-    }
+  if (ctx.ocsp_response_ && !ctx.ocsp_response_->isExpired()) {
+    ctx.stapleOcspResponse();
+    return true;
   }
 
   return true;
@@ -1393,7 +1390,7 @@ void ServerContextImpl::TlsContext::addClientValidationContext(
   }
 }
 
-void ServerContextImpl::TlsContext::stapleOcspResponse() {
+void ServerContextImpl::TlsContext::stapleOcspResponse() const {
   const std::string& ocsp_response_bytes = ocsp_response_->rawBytes();
   auto* resp = reinterpret_cast<const uint8_t*>(ocsp_response_bytes.c_str());
   // Check to see if this is necessary or only on the client side

@@ -177,7 +177,7 @@ protected:
     std::string getCertChainFileName() const { return cert_chain_file_path_; };
     void addClientValidationContext(const Envoy::Ssl::CertificateValidationContextConfig& config,
                                     bool require_client_cert);
-    void stapleOcspResponse();
+    void stapleOcspResponse() const;
     bool isCipherEnabled(uint16_t cipher_id, uint16_t client_version);
     Envoy::Ssl::PrivateKeyMethodProviderSharedPtr getPrivateKeyMethodProvider() {
       return private_key_method_provider_;
