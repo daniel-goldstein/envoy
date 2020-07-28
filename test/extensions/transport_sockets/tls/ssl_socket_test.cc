@@ -237,6 +237,15 @@ public:
 
   Network::ConnectionEvent expectedServerCloseEvent() const { return expected_server_close_event_; }
 
+  TestUtilOptions& setExpectedOcspResponse(const std::string& expected_ocsp_response) {
+    expected_ocsp_response_ = expected_ocsp_response;
+    return *this;
+  }
+
+  const std::string& expectedOcspResponse() const {
+    return expected_ocsp_response_;
+  }
+
   TestUtilOptions& addExpected509Extension(absl::string_view name,
                                            absl::optional<std::string> value) {
     expected_x509_extensions_[name] = std::move(value);
@@ -268,6 +277,7 @@ private:
   std::string expected_peer_cert_chain_;
   std::string expected_valid_from_peer_cert_;
   std::string expected_expiration_peer_cert_;
+  std::string expected_ocsp_response_;
   absl::flat_hash_map<std::string, absl::optional<std::string>> expected_x509_extensions_;
 };
 
@@ -338,6 +348,13 @@ void testUtil(const TestUtilOptions& options) {
             stream_info);
         server_connection->addConnectionCallbacks(server_connection_callbacks);
       }));
+
+  if (!options.expectedOcspResponse().empty()) {
+    const SslSocketInfo* ssl_socket =
+        dynamic_cast<const SslSocketInfo*>(client_connection->ssl().get());
+    SSL* client_ssl_socket = ssl_socket->ssl();
+    SSL_enable_ocsp_stapling(client_ssl_socket);
+  }
 
   Network::MockConnectionCallbacks client_connection_callbacks;
   client_connection->addConnectionCallbacks(client_connection_callbacks);
@@ -421,6 +438,16 @@ void testUtil(const TestUtilOptions& options) {
       if (options.expectNoCertChain()) {
         EXPECT_EQ(EMPTY_STRING,
                   server_connection->ssl()->urlEncodedPemEncodedPeerCertificateChain());
+      }
+      if (!options.expectedOcspResponse().empty()) {
+        const SslSocketInfo* ssl_socket =
+            dynamic_cast<const SslSocketInfo*>(client_connection->ssl().get());
+        SSL* client_ssl_socket = ssl_socket->ssl();
+        const uint8_t *response_head;
+        size_t response_len;
+        SSL_get0_ocsp_response(client_ssl_socket, &response_head, &response_len);
+        std::string ocsp_response{reinterpret_cast<const char *>(response_head), response_len};
+        EXPECT_EQ(options.expectedOcspResponse(), ocsp_response);
       }
 
       for (const auto& expected_extension : options.expectedX509Extensions()) {
@@ -5196,6 +5223,33 @@ TEST_P(SslSocketTest, RsaAndEcdsaPrivateKeyProviderMultiCertFail) {
   testUtil(failing_test_options.setPrivateKeyMethodExpected(true)
                .setExpectedServerCloseEvent(Network::ConnectionEvent::LocalClose)
                .setExpectedServerStats("ssl.connection_error"));
+}
+
+TEST_P(SslSocketTest, TestOcspStaple) {
+  const std::string server_ctx_yaml = R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_cert.pem"
+      private_key:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem"
+      ocsp_staple:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der"
+  ocsp_staple_policy: 1
+  )EOF";
+
+  const std::string client_ctx_yaml = R"EOF(
+  common_tls_context:
+    tls_params:
+      cipher_suites:
+      - TLS_RSA_WITH_AES_128_GCM_SHA256
+)EOF";
+  TestUtilOptions test_options(client_ctx_yaml, server_ctx_yaml, true, GetParam());
+
+  std::string ocsp_response_path = "{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der";
+  std::string expected_response = TestEnvironment::readFileToStringForTest(
+      TestEnvironment::substitute(ocsp_response_path));
+  testUtil(test_options.setExpectedOcspResponse(expected_response));
 }
 
 } // namespace Tls

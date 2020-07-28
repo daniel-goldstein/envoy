@@ -1321,7 +1321,7 @@ bool ServerContextImpl::isClientEcdsaCapable(const SSL_CLIENT_HELLO* ssl_client_
 }
 
 bool ServerContextImpl::configureOcspStapling(const ContextImpl::TlsContext& ctx) {
-  if (ctx.ocsp_response_ && !ctx.ocsp_response_->isExpired()) {
+  if (ctx.ocsp_response_) {
     ctx.stapleOcspResponse();
     return true;
   }
