@@ -1013,6 +1013,7 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
       });
 
   for (auto& ctx : tls_contexts_) {
+    configureOcspStapling(ctx); // TODO(daniel-goldstein): Maybe move somewhere else
     if (config.certificateValidationContext() != nullptr &&
         !config.certificateValidationContext()->caCert().empty()) {
       ctx.addClientValidationContext(*config.certificateValidationContext(),
@@ -1335,7 +1336,8 @@ ServerContextImpl::selectTlsContext(const SSL_CLIENT_HELLO* ssl_client_hello) {
   // Fallback on first certificate.
   const TlsContext* selected_ctx = &tls_contexts_[0];
   for (const auto& ctx : tls_contexts_) {
-    if (client_ecdsa_capable == ctx.is_ecdsa_ && configureOcspStapling(ctx)) {
+    // TODO(daniel-goldstein): Check for ocsp validity here.
+    if (client_ecdsa_capable == ctx.is_ecdsa_) {
       selected_ctx = &ctx;
       break;
     }
@@ -1394,7 +1396,6 @@ void ServerContextImpl::TlsContext::stapleOcspResponse() const {
   const std::string& ocsp_response_bytes = ocsp_response_->rawBytes();
   auto* resp = reinterpret_cast<const uint8_t*>(ocsp_response_bytes.c_str());
   // Check to see if this is necessary or only on the client side
-  SSL_CTX_enable_ocsp_stapling(ssl_ctx_.get());
   if (!SSL_CTX_set_ocsp_response(ssl_ctx_.get(), resp, ocsp_response_bytes.size())) {
     throw EnvoyException("Failed to set ocsp response in SSL_CTX");
   }
