@@ -5276,7 +5276,7 @@ TEST_P(SslSocketTest, TestNoOcspStapleWhenNotEnabledOnClient) {
         filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem"
       ocsp_staple:
         filename: "{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der"
-  ocsp_staple_policy: 1
+  ocsp_staple_policy: stapling_required
   )EOF";
 
   const std::string client_ctx_yaml = R"EOF(

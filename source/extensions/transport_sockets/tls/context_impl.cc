@@ -1013,7 +1013,6 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
       });
 
   for (auto& ctx : tls_contexts_) {
-    configureOcspStapling(ctx); // TODO(daniel-goldstein): Maybe move somewhere else
     if (config.certificateValidationContext() != nullptr &&
         !config.certificateValidationContext()->caCert().empty()) {
       ctx.addClientValidationContext(*config.certificateValidationContext(),
@@ -1321,10 +1320,13 @@ bool ServerContextImpl::isClientEcdsaCapable(const SSL_CLIENT_HELLO* ssl_client_
   return false;
 }
 
-bool ServerContextImpl::configureOcspStapling(const ContextImpl::TlsContext& ctx) {
-  if (ctx.ocsp_response_) {
-    ctx.stapleOcspResponse();
-    return true;
+bool ServerContextImpl::configureOcspStapling(const ContextImpl::TlsContext& ctx, SSL* ssl) {
+  if (ctx.ocsp_response_ && !ctx.ocsp_response_->isExpired()) {
+    const std::string& ocsp_response_bytes = ctx.ocsp_response_->rawBytes();
+    auto* resp = reinterpret_cast<const uint8_t*>(ocsp_response_bytes.c_str());
+    if (!SSL_set_ocsp_response(ssl, resp, ocsp_response_bytes.size())) {
+      return false;
+    }
   }
 
   return true;
@@ -1336,12 +1338,12 @@ ServerContextImpl::selectTlsContext(const SSL_CLIENT_HELLO* ssl_client_hello) {
   // Fallback on first certificate.
   const TlsContext* selected_ctx = &tls_contexts_[0];
   for (const auto& ctx : tls_contexts_) {
-    // TODO(daniel-goldstein): Check for ocsp validity here.
-    if (client_ecdsa_capable == ctx.is_ecdsa_) {
+    if (client_ecdsa_capable == ctx.is_ecdsa_ && configureOcspStapling(*selected_ctx, ssl_client_hello->ssl)) {
       selected_ctx = &ctx;
       break;
     }
   }
+
   RELEASE_ASSERT(SSL_set_SSL_CTX(ssl_client_hello->ssl, selected_ctx->ssl_ctx_.get()) != nullptr,
                  "");
   return ssl_select_cert_success;
@@ -1389,15 +1391,6 @@ void ServerContextImpl::TlsContext::addClientValidationContext(
   // SSL_VERIFY_PEER or stronger mode was already set in ContextImpl::ContextImpl().
   if (require_client_cert) {
     SSL_CTX_set_verify(ssl_ctx_.get(), SSL_VERIFY_PEER | SSL_VERIFY_FAIL_IF_NO_PEER_CERT, nullptr);
-  }
-}
-
-void ServerContextImpl::TlsContext::stapleOcspResponse() const {
-  const std::string& ocsp_response_bytes = ocsp_response_->rawBytes();
-  auto* resp = reinterpret_cast<const uint8_t*>(ocsp_response_bytes.c_str());
-  // Check to see if this is necessary or only on the client side
-  if (!SSL_CTX_set_ocsp_response(ssl_ctx_.get(), resp, ocsp_response_bytes.size())) {
-    throw EnvoyException("Failed to set ocsp response in SSL_CTX");
   }
 }
 

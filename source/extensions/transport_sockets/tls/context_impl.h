@@ -177,7 +177,6 @@ protected:
     std::string getCertChainFileName() const { return cert_chain_file_path_; };
     void addClientValidationContext(const Envoy::Ssl::CertificateValidationContextConfig& config,
                                     bool require_client_cert);
-    void stapleOcspResponse() const;
     bool isCipherEnabled(uint16_t cipher_id, uint16_t client_version);
     Envoy::Ssl::PrivateKeyMethodProviderSharedPtr getPrivateKeyMethodProvider() {
       return private_key_method_provider_;
@@ -254,7 +253,7 @@ private:
   enum ssl_select_cert_result_t selectTlsContext(const SSL_CLIENT_HELLO* ssl_client_hello);
   // Returns true if the context can be used. TODO This isn't a great solution but good enough
   // for now to get the logic down.
-  bool configureOcspStapling(const ServerContextImpl::TlsContext& ctx);
+  bool configureOcspStapling(const ServerContextImpl::TlsContext& ctx, SSL* ssl);
 
   SessionContextID generateHashForSessionContextId(const std::vector<std::string>& server_names);
 
