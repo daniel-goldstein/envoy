@@ -27,6 +27,10 @@ cd $TEST_OCSP_DIR
 
 # $1=<certificate name> $2=<CA name>
 generate_config() {
+touch $1_index.txt
+echo "unique_subject = no" > $1_index.txt.attr
+echo 1000 > $1_serial
+
 (cat << EOF
 [ req ]
 default_bits            = 2048
@@ -120,16 +124,10 @@ revoke_certificate() {
 }
 
 # Set up the CA
-touch ca_index.txt
-echo "unique_subject = no" > ca_index.txt.attr
-echo 1000 > ca_serial
 generate_config ca ca
 generate_ca ca
 
 # Set up an intermediate CA with a different database
-touch intermediate_ca_index.txt
-echo "unique_subject = no" > intermediate_ca_index.txt.attr
-echo 1000 > intermediate_ca_serial
 generate_config intermediate_ca intermediate_ca
 generate_ca intermediate_ca ca
 
