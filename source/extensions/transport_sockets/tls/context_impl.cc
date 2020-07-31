@@ -424,11 +424,16 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
     if (!ocsp_resp_bytes.empty()) {
       auto response = std::make_unique<Ocsp::OcspResponseWrapper>(
           ocsp_resp_bytes, time_source_);
-      if (response->matchesCertificate(*ctx.cert_chain_)) {
-        ctx.ocsp_response_ = std::move(response);
-      } else {
+      if (!response->matchesCertificate(*ctx.cert_chain_)) {
         throw EnvoyException("OCSP response does not match its TLS certificate");
       }
+      if (!(response->getResponseStatus() == Ocsp::OcspResponseStatus::Successful)) {
+        throw EnvoyException("OCSP response was not successful");
+      }
+      if (response->isExpired()) {
+        throw EnvoyException("OCSP response has expired as of config time");
+      }
+      ctx.ocsp_response_ = std::move(response);
     }
   }
 

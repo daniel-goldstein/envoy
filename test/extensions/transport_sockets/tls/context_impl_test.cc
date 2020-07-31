@@ -607,16 +607,33 @@ TEST_F(SslServerContextImplOcspTest, TestMismatchedOcspStapleConfigFails) {
   common_tls_context:
     tls_certificates:
     - certificate_chain:
-        filename: "{{ test_tmpdir }}/ocsp_test_data/good_cert.pem"
+        filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_cert.pem"
       private_key:
-        filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem"
+        filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_key.pem"
+      ocsp_staple:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der"
+  ocsp_staple_policy: stapling_required
+  )EOF";
+
+  EXPECT_THROW_WITH_MESSAGE(loadConfigYaml(tls_context_yaml),
+      EnvoyException, "OCSP response does not match its TLS certificate");
+}
+
+TEST_F(SslServerContextImplOcspTest, TestExpiredOcspStapleConfigFails) {
+  const std::string tls_context_yaml = R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_cert.pem"
+      private_key:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_key.pem"
       ocsp_staple:
         filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_ocsp_resp.der"
   ocsp_staple_policy: stapling_required
   )EOF";
 
   EXPECT_THROW_WITH_MESSAGE(loadConfigYaml(tls_context_yaml),
-      EnvoyException, "OCSP response does not match its TLS certificate");
+      EnvoyException, "OCSP response has expired as of config time");
 }
 
 class SslServerContextImplTicketTest : public SslContextImplTest {
