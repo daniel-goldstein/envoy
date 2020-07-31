@@ -130,62 +130,6 @@ bool OcspResponseWrapper::isExpired() {
   return next_update == absl::nullopt || next_update < time_source_.systemTime();
 }
 
-void skipResponderId(CBS& cbs) {
-  // ResponderID ::= CHOICE {
-  //    byName               [1] Name,
-  //    byKey                [2] KeyHash
-  // }
-  //
-  // KeyHash ::= OCTET STRING -- SHA-1 hash of responder's public key
-  //    (excluding the tag and length fields)
-
-  if (Asn1Utility::isOptionalPresent(cbs, nullptr, CONS | CONT | 1) ||
-      Asn1Utility::isOptionalPresent(cbs, nullptr, CONS | CONT | 2)) {
-    return;
-  }
-
-  throw EnvoyException(absl::StrCat("Unknown choice for Responder ID: ", parseTag(cbs)));
-}
-
-} // namespace
-
-OcspResponseWrapper::OcspResponseWrapper(std::string der_response, TimeSource& time_source)
-    : raw_bytes_(std::move(der_response)), response_(readDerEncodedOcspResponse(raw_bytes_)),
-      time_source_(time_source) {
-
-  if (response_->response_ == nullptr) {
-    throw EnvoyException("OCSP response has no body");
-  }
-
-  // We only permit a 1:1 of certificate to response
-  if (response_->response_->getNumCerts() != 1) {
-    throw EnvoyException("OCSP Response must be for one certificate only");
-  }
-
-  auto& this_update = response_->response_->getThisUpdate();
-  if (time_source_.systemTime() < this_update) {
-    DateFormatter formatter("%E4Y%m%d%H%M%S");
-    throw EnvoyException(absl::StrCat("OCSP Response thisUpdate field is set in the future: ",
-                                      formatter.fromTime(this_update)));
-  }
-}
-
-// TODO(daniel-goldstein): This should also check the issuer
-bool OcspResponseWrapper::matchesCertificate(X509& cert) {
-  std::string cert_serial_number = CertUtility::getSerialNumberFromCertificate(cert);
-  std::string resp_cert_serial_number = response_->response_->getCertSerialNumber();
-  return resp_cert_serial_number == cert_serial_number;
-}
-
-bool OcspResponseWrapper::isExpired() {
-  auto& next_update = response_->response_->getNextUpdate();
-  return next_update == absl::nullopt || next_update < time_source_.systemTime();
-}
-
-////////////////////////////////////////////////////////////////////////////////
-// OCSP Parsing methods
-////////////////////////////////////////////////////////////////////////////////
-
 std::unique_ptr<OcspResponse> Asn1OcspUtility::parseOcspResponse(CBS& cbs) {
   // OCSPResponse ::= SEQUENCE {
   //    responseStatus         OCSPResponseStatus,
