@@ -420,10 +420,15 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
 #endif
     }
 
-    // TODO(daniel-goldstein): Validate here. Throw exceptions when necessary
-    auto& ocsp_staple = tls_certificate.ocspStaple();
-    if (!ocsp_staple.empty()) {
-      ctx.ocsp_response_ = std::make_unique<Ocsp::OcspResponseWrapper>(ocsp_staple, time_source_);
+    auto& ocsp_resp_bytes = tls_certificate.ocspStaple();
+    if (!ocsp_resp_bytes.empty()) {
+      auto response = std::make_unique<Ocsp::OcspResponseWrapper>(
+          ocsp_resp_bytes, time_source_);
+      if (response->matchesCertificate(*ctx.cert_chain_)) {
+        ctx.ocsp_response_ = std::move(response);
+      } else {
+        throw EnvoyException("OCSP response does not match its TLS certificate");
+      }
     }
   }
 

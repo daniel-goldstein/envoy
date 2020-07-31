@@ -571,7 +571,7 @@ TEST_F(SslContextImplTest, MustHaveSubjectOrSAN) {
                           EnvoyException, "has neither subject CN nor SAN names");
 }
 
-// TODO I copy and pasted this from TicketTest, be
+// TODO(daniel-goldstein): I copy and pasted this from TicketTest, be
 // a better samaritan.
 class SslServerContextImplOcspTest : public SslContextImplTest {
 public:
@@ -587,7 +587,7 @@ public:
   }
 };
 
-TEST_F(SslServerContextImplOcspTest, TestOcspStaple) {
+TEST_F(SslServerContextImplOcspTest, TestMatchingOcspStapleConfigLoads) {
   const std::string tls_context_yaml = R"EOF(
   common_tls_context:
     tls_certificates:
@@ -597,9 +597,26 @@ TEST_F(SslServerContextImplOcspTest, TestOcspStaple) {
         filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem"
       ocsp_staple:
         filename: "{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der"
-  ocsp_staple_policy: 1
+  ocsp_staple_policy: stapling_required
   )EOF";
   auto server_context = loadConfigYaml(tls_context_yaml);
+}
+
+TEST_F(SslServerContextImplOcspTest, TestMismatchedOcspStapleConfigFails) {
+  const std::string tls_context_yaml = R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_cert.pem"
+      private_key:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem"
+      ocsp_staple:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_ocsp_resp.der"
+  ocsp_staple_policy: stapling_required
+  )EOF";
+
+  EXPECT_THROW_WITH_MESSAGE(loadConfigYaml(tls_context_yaml),
+      EnvoyException, "OCSP response does not match its TLS certificate");
 }
 
 class SslServerContextImplTicketTest : public SslContextImplTest {
