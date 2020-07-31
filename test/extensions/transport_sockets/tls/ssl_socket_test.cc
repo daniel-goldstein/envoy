@@ -242,9 +242,7 @@ public:
     return *this;
   }
 
-  const std::string& expectedOcspResponse() const {
-    return expected_ocsp_response_;
-  }
+  const std::string& expectedOcspResponse() const { return expected_ocsp_response_; }
 
   TestUtilOptions& setOcspStaplingEnabled(bool ocsp_stapling_enabled) {
     ocsp_stapling_enabled_ = ocsp_stapling_enabled;
@@ -451,16 +449,11 @@ void testUtil(const TestUtilOptions& options) {
       const SslSocketInfo* ssl_socket =
           dynamic_cast<const SslSocketInfo*>(client_connection->ssl().get());
       SSL* client_ssl_socket = ssl_socket->ssl();
-      const uint8_t *response_head;
+      const uint8_t* response_head;
       size_t response_len;
       SSL_get0_ocsp_response(client_ssl_socket, &response_head, &response_len);
-      std::string ocsp_response{reinterpret_cast<const char *>(response_head), response_len};
-      if (!options.expectedOcspResponse().empty()) {
-        EXPECT_EQ(options.expectedOcspResponse(), ocsp_response);
-      } else {
-        ASSERT(!options.ocspStaplingEnabled());
-        EXPECT_EQ("", ocsp_response);
-      }
+      std::string ocsp_response{reinterpret_cast<const char*>(response_head), response_len};
+      EXPECT_EQ(options.expectedOcspResponse(), ocsp_response);
 
       for (const auto& expected_extension : options.expectedX509Extensions()) {
         const auto& result = server_connection->ssl()->x509Extension(expected_extension.first);
@@ -5259,11 +5252,10 @@ TEST_P(SslSocketTest, TestStaplesOcspResponseSuccess) {
   TestUtilOptions test_options(client_ctx_yaml, server_ctx_yaml, true, GetParam());
 
   std::string ocsp_response_path = "{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der";
-  std::string expected_response = TestEnvironment::readFileToStringForTest(
-      TestEnvironment::substitute(ocsp_response_path));
+  std::string expected_response =
+      TestEnvironment::readFileToStringForTest(TestEnvironment::substitute(ocsp_response_path));
 
-  testUtil(test_options.setOcspStaplingEnabled(true)
-      .setExpectedOcspResponse(expected_response));
+  testUtil(test_options.setOcspStaplingEnabled(true).setExpectedOcspResponse(expected_response));
 }
 
 TEST_P(SslSocketTest, TestNoOcspStapleWhenNotEnabledOnClient) {
@@ -5287,6 +5279,53 @@ TEST_P(SslSocketTest, TestNoOcspStapleWhenNotEnabledOnClient) {
 )EOF";
   TestUtilOptions test_options(client_ctx_yaml, server_ctx_yaml, true, GetParam());
   testUtil(test_options.setOcspStaplingEnabled(false));
+}
+
+TEST_P(SslSocketTest, TestConnectionFailsOnStapleRequiredAndOcspExpired) {
+  const std::string server_ctx_yaml = R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_cert.pem"
+      private_key:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem"
+      ocsp_staple:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/unknown_ocsp_resp.der"
+  ocsp_staple_policy: stapling_required
+  )EOF";
+
+  const std::string client_ctx_yaml = R"EOF(
+  common_tls_context:
+    tls_params:
+      cipher_suites:
+      - TLS_RSA_WITH_AES_128_GCM_SHA256
+)EOF";
+  TestUtilOptions test_options(client_ctx_yaml, server_ctx_yaml, false, GetParam());
+  // TODO(daniel-goldstein): Figure out what stats should be happening here
+  testUtil(test_options.setExpectedServerStats("").setOcspStaplingEnabled(true));
+}
+
+TEST_P(SslSocketTest, TestOcspStapleOmittedOnSkipStaplingAndResponseExpired) {
+  const std::string server_ctx_yaml = R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_cert.pem"
+      private_key:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem"
+      ocsp_staple:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/unknown_ocsp_resp.der"
+  ocsp_staple_policy: skip_stapling_if_expired
+  )EOF";
+
+  const std::string client_ctx_yaml = R"EOF(
+  common_tls_context:
+    tls_params:
+      cipher_suites:
+      - TLS_RSA_WITH_AES_128_GCM_SHA256
+)EOF";
+  TestUtilOptions test_options(client_ctx_yaml, server_ctx_yaml, true, GetParam());
+  testUtil(test_options.setOcspStaplingEnabled(true));
 }
 
 } // namespace Tls

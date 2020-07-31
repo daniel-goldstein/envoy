@@ -420,7 +420,7 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
 #endif
     }
 
-    // TODO Validate here. Throw exceptions when necessary
+    // TODO(daniel-goldstein): Validate here. Throw exceptions when necessary
     auto& ocsp_staple = tls_certificate.ocspStaple();
     if (!ocsp_staple.empty()) {
       ctx.ocsp_response_ = std::make_unique<Ocsp::OcspResponseWrapper>(ocsp_staple, time_source_);
@@ -991,7 +991,8 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
                                      const Envoy::Ssl::ServerContextConfig& config,
                                      const std::vector<std::string>& server_names,
                                      TimeSource& time_source)
-    : ContextImpl(scope, config, time_source), session_ticket_keys_(config.sessionTicketKeys()), ocsp_staple_policy_(config.ocspStaplePolicy()) {
+    : ContextImpl(scope, config, time_source), session_ticket_keys_(config.sessionTicketKeys()),
+      ocsp_staple_policy_(config.ocspStaplePolicy()) {
   if (config.tlsCertificates().empty()) {
     throw EnvoyException("Server TlsCertificates must have a certificate specified");
   }
@@ -1320,29 +1321,50 @@ bool ServerContextImpl::isClientEcdsaCapable(const SSL_CLIENT_HELLO* ssl_client_
   return false;
 }
 
-bool ServerContextImpl::configureOcspStapling(const ContextImpl::TlsContext& ctx, SSL* ssl) {
-  if (ctx.ocsp_response_ && !ctx.ocsp_response_->isExpired()) {
-    const std::string& ocsp_response_bytes = ctx.ocsp_response_->rawBytes();
+void ServerContextImpl::TlsContext::stapleOcspResponseIfValid(SSL* ssl) const {
+  if (ocsp_response_ && !ocsp_response_->isExpired()) {
+    const std::string& ocsp_response_bytes = ocsp_response_->rawBytes();
     auto* resp = reinterpret_cast<const uint8_t*>(ocsp_response_bytes.c_str());
     if (!SSL_set_ocsp_response(ssl, resp, ocsp_response_bytes.size())) {
-      return false;
+      // TODO(daniel-goldstein): Shouldn't throw an exception at runtime.
+      // This should probably be a boolean instead.
+      throw EnvoyException("Failed to staple ocsp response");
     }
   }
+}
 
-  return true;
+bool ServerContextImpl::passesOcspPolicy(const ContextImpl::TlsContext& ctx) {
+  switch(ocsp_staple_policy_) {
+  case envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::SKIP_STAPLING_IF_EXPIRED:
+    return true;
+  case envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::STAPLING_REQUIRED:
+    return ctx.ocsp_response_ && !ctx.ocsp_response_->isExpired();
+  case envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::REJECT_CONNECTION_ON_EXPIRED:
+    return !ctx.ocsp_response_ || !ctx.ocsp_response_->isExpired();
+  default:
+    // TODO(daniel-goldstein): What to do here, isn't this unreachable?
+    return false;
+  }
 }
 
 enum ssl_select_cert_result_t
 ServerContextImpl::selectTlsContext(const SSL_CLIENT_HELLO* ssl_client_hello) {
   const bool client_ecdsa_capable = isClientEcdsaCapable(ssl_client_hello);
-  // Fallback on first certificate.
+  // Default to first context
   const TlsContext* selected_ctx = &tls_contexts_[0];
+  // Try to find a better context that matches ECDSA & OCSP policy
   for (const auto& ctx : tls_contexts_) {
-    if (client_ecdsa_capable == ctx.is_ecdsa_ && configureOcspStapling(*selected_ctx, ssl_client_hello->ssl)) {
+    if (client_ecdsa_capable == ctx.is_ecdsa_ && passesOcspPolicy(ctx)) {
       selected_ctx = &ctx;
       break;
     }
   }
+
+  // Fail if the selected context still fails the OCSP policy (for the default case)
+  if (!passesOcspPolicy(*selected_ctx)) {
+    return ssl_select_cert_error;
+  }
+  selected_ctx->stapleOcspResponseIfValid(ssl_client_hello->ssl);
 
   RELEASE_ASSERT(SSL_set_SSL_CTX(ssl_client_hello->ssl, selected_ctx->ssl_ctx_.get()) != nullptr,
                  "");

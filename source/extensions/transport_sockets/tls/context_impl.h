@@ -178,6 +178,7 @@ protected:
     void addClientValidationContext(const Envoy::Ssl::CertificateValidationContextConfig& config,
                                     bool require_client_cert);
     bool isCipherEnabled(uint16_t cipher_id, uint16_t client_version);
+    void stapleOcspResponseIfValid(SSL* ssl) const;
     Envoy::Ssl::PrivateKeyMethodProviderSharedPtr getPrivateKeyMethodProvider() {
       return private_key_method_provider_;
     }
@@ -251,14 +252,13 @@ private:
   // Select the TLS certificate context in SSL_CTX_set_select_certificate_cb() callback with
   // ClientHello details.
   enum ssl_select_cert_result_t selectTlsContext(const SSL_CLIENT_HELLO* ssl_client_hello);
-  // Returns true if the context can be used. TODO This isn't a great solution but good enough
-  // for now to get the logic down.
-  bool configureOcspStapling(const ServerContextImpl::TlsContext& ctx, SSL* ssl);
+  bool passesOcspPolicy(const ServerContextImpl::TlsContext& ctx);
 
   SessionContextID generateHashForSessionContextId(const std::vector<std::string>& server_names);
 
   const std::vector<Envoy::Ssl::ServerContextConfig::SessionTicketKey> session_ticket_keys_;
-  const envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::OcspStaplePolicy ocsp_staple_policy_;
+  const envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::OcspStaplePolicy
+      ocsp_staple_policy_;
 };
 
 } // namespace Tls
