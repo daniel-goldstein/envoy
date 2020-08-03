@@ -1331,16 +1331,14 @@ bool ServerContextImpl::isClientEcdsaCapable(const SSL_CLIENT_HELLO* ssl_client_
   return false;
 }
 
-void ServerContextImpl::TlsContext::stapleOcspResponseIfValid(SSL* ssl) const {
+bool ServerContextImpl::TlsContext::stapleOcspResponseIfValid(SSL* ssl) const {
   if (ocsp_response_ && !ocsp_response_->isExpired()) {
     const std::string& ocsp_response_bytes = ocsp_response_->rawBytes();
     auto* resp = reinterpret_cast<const uint8_t*>(ocsp_response_bytes.c_str());
-    if (!SSL_set_ocsp_response(ssl, resp, ocsp_response_bytes.size())) {
-      // TODO(daniel-goldstein): Shouldn't throw an exception at runtime.
-      // This should probably be a boolean instead.
-      throw EnvoyException("Failed to staple ocsp response");
-    }
+    return SSL_set_ocsp_response(ssl, resp, ocsp_response_bytes.size());
   }
+
+  return true;
 }
 
 bool ServerContextImpl::passesOcspPolicy(const ContextImpl::TlsContext& ctx) {
@@ -1352,7 +1350,7 @@ bool ServerContextImpl::passesOcspPolicy(const ContextImpl::TlsContext& ctx) {
   case envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::REJECT_CONNECTION_ON_EXPIRED:
     return !ctx.ocsp_response_ || !ctx.ocsp_response_->isExpired();
   default:
-    // TODO(daniel-goldstein): What to do here, isn't this unreachable?
+    // TODO(daniel-goldstein): Unreachable
     return false;
   }
 }
@@ -1371,10 +1369,10 @@ ServerContextImpl::selectTlsContext(const SSL_CLIENT_HELLO* ssl_client_hello) {
   }
 
   // Fail if the selected context still fails the OCSP policy (for the default case)
-  if (!passesOcspPolicy(*selected_ctx)) {
+  if (!(passesOcspPolicy(*selected_ctx) &&
+        selected_ctx->stapleOcspResponseIfValid(ssl_client_hello->ssl))) {
     return ssl_select_cert_error;
   }
-  selected_ctx->stapleOcspResponseIfValid(ssl_client_hello->ssl);
 
   RELEASE_ASSERT(SSL_set_SSL_CTX(ssl_client_hello->ssl, selected_ctx->ssl_ctx_.get()) != nullptr,
                  "");
