@@ -6,6 +6,7 @@
 #include "envoy/extensions/transport_sockets/tls/v3/tls.pb.validate.h"
 #include "envoy/type/matcher/v3/string.pb.h"
 
+#include "common/common/base64.h"
 #include "common/json/json_loader.h"
 #include "common/secret/sds_api.h"
 #include "common/stats/isolated_store_impl.h"
@@ -587,7 +588,7 @@ public:
   }
 };
 
-TEST_F(SslServerContextImplOcspTest, TestMatchingOcspStapleConfigLoads) {
+TEST_F(SslServerContextImplOcspTest, TestFilenameOcspStapleConfigLoads) {
   const std::string tls_context_yaml = R"EOF(
   common_tls_context:
     tls_certificates:
@@ -599,6 +600,44 @@ TEST_F(SslServerContextImplOcspTest, TestMatchingOcspStapleConfigLoads) {
         filename: "{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der"
   ocsp_staple_policy: stapling_required
   )EOF";
+  auto server_context = loadConfigYaml(tls_context_yaml);
+}
+
+/* // TODO(daniel-goldstein): How do I insert bytes :( */
+/* TEST_F(SslServerContextImplOcspTest, TestInlineBytesOcspStapleConfigLoads) { */
+/*   std::string der_response = TestEnvironment::readFileToStringForTest( */
+/*       TestEnvironment::substitute("{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der")); */
+/*   const std::string tls_context_yaml = fmt::format(R"EOF( */
+/*   common_tls_context: */
+/*     tls_certificates: */
+/*     - certificate_chain: */
+/*         filename: "{{{{ test_tmpdir }}}}/ocsp_test_data/good_cert.pem" */
+/*       private_key: */
+/*         filename: "{{{{ test_tmpdir }}}}/ocsp_test_data/good_key.pem" */
+/*       ocsp_staple: */
+/*        inline_bytes: "0x{}" */
+/*   ocsp_staple_policy: stapling_required */
+/*   )EOF", der_response); */
+
+/*   auto server_context = loadConfigYaml(tls_context_yaml); */
+/* } */
+
+TEST_F(SslServerContextImplOcspTest, TestInlineStringOcspStapleConfigLoads) {
+  auto der_response = TestEnvironment::readFileToStringForTest(
+      TestEnvironment::substitute("{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der"));
+  auto base64_response = Base64::encode(der_response.c_str(), der_response.length(), true);
+  const std::string tls_context_yaml = fmt::format(R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{{{ test_tmpdir }}}}/ocsp_test_data/good_cert.pem"
+      private_key:
+        filename: "{{{{ test_tmpdir }}}}/ocsp_test_data/good_key.pem"
+      ocsp_staple:
+       inline_string: "{}"
+  ocsp_staple_policy: stapling_required
+  )EOF", base64_response);
+
   auto server_context = loadConfigYaml(tls_context_yaml);
 }
 
@@ -619,23 +658,22 @@ TEST_F(SslServerContextImplOcspTest, TestMismatchedOcspStapleConfigFails) {
       EnvoyException, "OCSP response does not match its TLS certificate");
 }
 
-// TODO(daniel-goldstein): How do I inline the bytes :(
-/* TEST_F(SslServerContextImplOcspTest, TestUnsuccessfulOcspStapleConfigFails) { */
-/*   const std::string tls_context_yaml = R"EOF( */
-/*   common_tls_context: */
-/*     tls_certificates: */
-/*     - certificate_chain: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_cert.pem" */
-/*       private_key: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_key.pem" */
-/*       ocsp_staple: */
-/*        inline_bytes: "\x30\x03\xa0\x01\x02" */
-/*   ocsp_staple_policy: stapling_required */
-/*   )EOF"; */
+TEST_F(SslServerContextImplOcspTest, TestExpiredOcspStapleConfigFails) {
+  const std::string tls_context_yaml = R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_cert.pem"
+      private_key:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_key.pem"
+      ocsp_staple:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_ocsp_resp.der"
+  ocsp_staple_policy: skip_stapling_if_expired
+  )EOF";
 
-/*   EXPECT_THROW_WITH_MESSAGE(loadConfigYaml(tls_context_yaml), */
-/*       EnvoyException, "OCSP response was not successful"); */
-/* } */
+  EXPECT_THROW_WITH_MESSAGE(loadConfigYaml(tls_context_yaml),
+      EnvoyException, "OCSP response has expired as of config time");
+}
 
 class SslServerContextImplTicketTest : public SslContextImplTest {
 public:

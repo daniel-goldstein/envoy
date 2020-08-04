@@ -4,6 +4,7 @@
 #include "envoy/extensions/transport_sockets/tls/v3/cert.pb.h"
 #include "envoy/server/transport_socket_config.h"
 
+#include "common/common/base64.h"
 #include "common/common/empty_string.h"
 #include "common/common/fmt.h"
 #include "common/config/datasource.h"
@@ -15,11 +16,11 @@ namespace {
   std::vector<uint8_t> readDerEncodedOcspStaple(const envoy::config::core::v3::DataSource& source,
       Api::Api& api) {
     std::string staple = Config::DataSource::read(source, true, api);
-    if (source.specifier_case(envoy::config::core::v3::DataSource::SpecifierCase::kInlineString)) {
-      return Base64::decode(staple);
+    if (source.specifier_case() == envoy::config::core::v3::DataSource::SpecifierCase::kInlineString) {
+      staple = Base64::decode(staple);
     }
 
-    return staple;
+    return { staple.begin(), staple.end() };
   }
 }
 

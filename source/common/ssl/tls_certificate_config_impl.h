@@ -22,7 +22,7 @@ public:
   const std::string& privateKeyPath() const override { return private_key_path_; }
   const std::string& password() const override { return password_; }
   const std::string& passwordPath() const override { return password_path_; }
-  const std::string& ocspStaple() const override { return ocsp_staple_; }
+  const std::vector<uint8_t>& ocspStaple() const override { return ocsp_staple_; }
   const std::string& ocspStaplePath() const override { return ocsp_staple_path_; }
   Envoy::Ssl::PrivateKeyMethodProviderSharedPtr privateKeyMethod() const override {
     return private_key_method_;
@@ -35,7 +35,7 @@ private:
   const std::string private_key_path_;
   const std::string password_;
   const std::string password_path_;
-  const std::string ocsp_staple_;
+  const std::vector<uint8_t> ocsp_staple_;
   const std::string ocsp_staple_path_;
   Envoy::Ssl::PrivateKeyMethodProviderSharedPtr private_key_method_{};
 };

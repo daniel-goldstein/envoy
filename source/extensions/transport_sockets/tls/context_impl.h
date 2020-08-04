@@ -178,7 +178,7 @@ protected:
     void addClientValidationContext(const Envoy::Ssl::CertificateValidationContextConfig& config,
                                     bool require_client_cert);
     bool isCipherEnabled(uint16_t cipher_id, uint16_t client_version);
-    void stapleOcspResponseIfValid(SSL* ssl) const;
+    bool stapleOcspResponseIfValid(SSL* ssl) const;
     Envoy::Ssl::PrivateKeyMethodProviderSharedPtr getPrivateKeyMethodProvider() {
       return private_key_method_provider_;
     }

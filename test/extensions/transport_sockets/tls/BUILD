@@ -77,6 +77,7 @@ envoy_cc_test(
     ],
     deps = [
         ":ssl_test_utils",
+        "//source/common/common:base64_lib",
         "//source/common/json:json_loader_lib",
         "//source/common/stats:isolated_store_lib",
         "//source/common/stats:stats_lib",

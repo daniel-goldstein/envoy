@@ -54,7 +54,7 @@ public:
   /**
    * @return a string of ocsp response.
    */
-  virtual const std::string& ocspStaple() const PURE;
+  virtual const std::vector<uint8_t>& ocspStaple() const PURE;
 
   /**
    * @return path of the ocsp response file for this certificate or "<inline>" if the
