@@ -42,6 +42,7 @@
 #include "test/test_common/environment.h"
 #include "test/test_common/network_utility.h"
 #include "test/test_common/registry.h"
+#include "test/test_common/test_runtime.h"
 #include "test/test_common/utility.h"
 
 #include "absl/strings/str_replace.h"
@@ -5281,73 +5282,79 @@ TEST_P(SslSocketTest, TestNoOcspStapleWhenNotEnabledOnClient) {
   testUtil(test_options.setOcspStaplingEnabled(false));
 }
 
-/* TEST_P(SslSocketTest, TestOcspStapleOmittedOnSkipStaplingAndResponseExpired) { */
-/*   const std::string server_ctx_yaml = R"EOF( */
-/*   common_tls_context: */
-/*     tls_certificates: */
-/*     - certificate_chain: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/good_cert.pem" */
-/*       private_key: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem" */
-/*       ocsp_staple: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/unknown_ocsp_resp.der" */
-/*   ocsp_staple_policy: skip_stapling_if_expired */
-/*   )EOF"; */
+TEST_P(SslSocketTest, TestOcspStapleOmittedOnSkipStaplingAndResponseExpired) {
+  const std::string server_ctx_yaml = R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_cert.pem"
+      private_key:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem"
+      ocsp_staple:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/unknown_ocsp_resp.der"
+  ocsp_staple_policy: skip_stapling_if_expired
+  )EOF";
 
-/*   const std::string client_ctx_yaml = R"EOF( */
-/*   common_tls_context: */
-/*     tls_params: */
-/*       cipher_suites: */
-/*       - TLS_RSA_WITH_AES_128_GCM_SHA256 */
-/* )EOF"; */
-/*   TestUtilOptions test_options(client_ctx_yaml, server_ctx_yaml, true, GetParam()); */
-/*   testUtil(test_options.setOcspStaplingEnabled(true)); */
-/* } */
+  const std::string client_ctx_yaml = R"EOF(
+  common_tls_context:
+    tls_params:
+      cipher_suites:
+      - TLS_RSA_WITH_AES_128_GCM_SHA256
+)EOF";
+  TestScopedRuntime scoped_runtime;
+  Runtime::LoaderSingleton::getExisting()->mergeValues(
+      {{"envoy.reloadable_features.validate_ocsp_expiration_at_config_time", "false"}});
+  TestUtilOptions test_options(client_ctx_yaml, server_ctx_yaml, true, GetParam());
+  testUtil(test_options.setOcspStaplingEnabled(true));
+}
 
-/* TEST_P(SslSocketTest, TestConnectionFailsOnStapleRequiredAndOcspExpired) { */
-/*   const std::string server_ctx_yaml = R"EOF( */
-/*   common_tls_context: */
-/*     tls_certificates: */
-/*     - certificate_chain: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/good_cert.pem" */
-/*       private_key: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem" */
-/*       ocsp_staple: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/unknown_ocsp_resp.der" */
-/*   ocsp_staple_policy: stapling_required */
-/*   )EOF"; */
+TEST_P(SslSocketTest, TestConnectionFailsOnStapleRequiredAndOcspExpired) {
+  const std::string server_ctx_yaml = R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_cert.pem"
+      private_key:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem"
+      ocsp_staple:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/unknown_ocsp_resp.der"
+  ocsp_staple_policy: stapling_required
+  )EOF";
 
-/*   const std::string client_ctx_yaml = R"EOF( */
-/*   common_tls_context: */
-/*     tls_params: */
-/*       cipher_suites: */
-/*       - TLS_RSA_WITH_AES_128_GCM_SHA256 */
-/* )EOF"; */
-/*   TestUtilOptions test_options(client_ctx_yaml, server_ctx_yaml, false, GetParam()); */
-/*   // TODO(daniel-goldstein): Figure out what stats should be happening here */
-/*   testUtil(test_options.setExpectedServerStats("").setOcspStaplingEnabled(true)); */
-/* } */
+  const std::string client_ctx_yaml = R"EOF(
+  common_tls_context:
+    tls_params:
+      cipher_suites:
+      - TLS_RSA_WITH_AES_128_GCM_SHA256
+)EOF";
+  TestScopedRuntime scoped_runtime;
+  Runtime::LoaderSingleton::getExisting()->mergeValues(
+      {{"envoy.reloadable_features.validate_ocsp_expiration_at_config_time", "false"}});
+  TestUtilOptions test_options(client_ctx_yaml, server_ctx_yaml, false, GetParam());
+  // TODO(daniel-goldstein): Figure out what stats should be happening here
+  testUtil(test_options.setExpectedServerStats("").setOcspStaplingEnabled(true));
+}
 
-/* TEST_P(SslSocketTest, TestConnectionFailsOnStapleRequiredAndNoOcspResponse) { */
-/*   const std::string server_ctx_yaml = R"EOF( */
-/*   common_tls_context: */
-/*     tls_certificates: */
-/*     - certificate_chain: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/good_cert.pem" */
-/*       private_key: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem" */
-/*   ocsp_staple_policy: stapling_required */
-/*   )EOF"; */
+TEST_P(SslSocketTest, TestConnectionFailsOnStapleRequiredAndNoOcspResponse) {
+  const std::string server_ctx_yaml = R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_cert.pem"
+      private_key:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem"
+  ocsp_staple_policy: stapling_required
+  )EOF";
 
-/*   const std::string client_ctx_yaml = R"EOF( */
-/*   common_tls_context: */
-/*     tls_params: */
-/*       cipher_suites: */
-/*       - TLS_RSA_WITH_AES_128_GCM_SHA256 */
-/* )EOF"; */
-/*   TestUtilOptions test_options(client_ctx_yaml, server_ctx_yaml, false, GetParam()); */
-/*   testUtil(test_options.setExpectedServerStats("").setOcspStaplingEnabled(true)); */
-/* } */
+  const std::string client_ctx_yaml = R"EOF(
+  common_tls_context:
+    tls_params:
+      cipher_suites:
+      - TLS_RSA_WITH_AES_128_GCM_SHA256
+)EOF";
+  TestUtilOptions test_options(client_ctx_yaml, server_ctx_yaml, false, GetParam());
+  testUtil(test_options.setExpectedServerStats("").setOcspStaplingEnabled(true));
+}
 
 TEST_P(SslSocketTest, TestConnectionSucceedsWhenRejectOnExpiredNoOcspResponse) {
   const std::string server_ctx_yaml = R"EOF(
@@ -5370,28 +5377,32 @@ TEST_P(SslSocketTest, TestConnectionSucceedsWhenRejectOnExpiredNoOcspResponse) {
   testUtil(test_options.setOcspStaplingEnabled(true));
 }
 
-/* TEST_P(SslSocketTest, TestConnectionFailsWhenRejectOnExpiredAndResponseExpired) { */
-/*   const std::string server_ctx_yaml = R"EOF( */
-/*   common_tls_context: */
-/*     tls_certificates: */
-/*     - certificate_chain: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/good_cert.pem" */
-/*       private_key: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem" */
-/*       ocsp_staple: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/unknown_ocsp_resp.der" */
-/*   ocsp_staple_policy: reject_connection_on_expired */
-/*   )EOF"; */
+TEST_P(SslSocketTest, TestConnectionFailsWhenRejectOnExpiredAndResponseExpired) {
+  const std::string server_ctx_yaml = R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_cert.pem"
+      private_key:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem"
+      ocsp_staple:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/unknown_ocsp_resp.der"
+  ocsp_staple_policy: reject_connection_on_expired
+  )EOF";
 
-/*   const std::string client_ctx_yaml = R"EOF( */
-/*   common_tls_context: */
-/*     tls_params: */
-/*       cipher_suites: */
-/*       - TLS_RSA_WITH_AES_128_GCM_SHA256 */
-/* )EOF"; */
-/*   TestUtilOptions test_options(client_ctx_yaml, server_ctx_yaml, false, GetParam()); */
-/*   testUtil(test_options.setExpectedServerStats("").setOcspStaplingEnabled(true)); */
-/* } */
+  const std::string client_ctx_yaml = R"EOF(
+  common_tls_context:
+    tls_params:
+      cipher_suites:
+      - TLS_RSA_WITH_AES_128_GCM_SHA256
+)EOF";
+
+  TestScopedRuntime scoped_runtime;
+  Runtime::LoaderSingleton::getExisting()->mergeValues(
+      {{"envoy.reloadable_features.validate_ocsp_expiration_at_config_time", "false"}});
+  TestUtilOptions test_options(client_ctx_yaml, server_ctx_yaml, false, GetParam());
+  testUtil(test_options.setExpectedServerStats("").setOcspStaplingEnabled(true));
+}
 
 } // namespace Tls
 } // namespace TransportSockets

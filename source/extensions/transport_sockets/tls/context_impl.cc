@@ -432,7 +432,8 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
       if (!(response->getResponseStatus() == Ocsp::OcspResponseStatus::Successful)) {
         throw EnvoyException("OCSP response was not successful");
       }
-      if (response->isExpired()) {
+      if (Runtime::runtimeFeatureEnabled("envoy.reloadable_features.validate_ocsp_expiration_at_config_time") &&
+          response->isExpired()) {
         throw EnvoyException("OCSP response has expired as of config time");
       }
       ctx.ocsp_response_ = std::move(response);

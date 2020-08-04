@@ -634,7 +634,7 @@ TEST_F(SslServerContextImplOcspTest, TestInlineStringOcspStapleConfigLoads) {
       private_key:
         filename: "{{{{ test_tmpdir }}}}/ocsp_test_data/good_key.pem"
       ocsp_staple:
-       inline_string: "{}"
+       inline_bytes: "{}"
   ocsp_staple_policy: stapling_required
   )EOF", base64_response);
 

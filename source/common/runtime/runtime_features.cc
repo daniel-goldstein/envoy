@@ -81,6 +81,7 @@ constexpr const char* runtime_features[] = {
     "envoy.reloadable_features.stop_faking_paths",
     "envoy.reloadable_features.hcm_stream_error_on_invalid_message",
     "envoy.reloadable_features.strict_1xx_and_204_response_headers",
+    "envoy.reloadable_features.validate_ocsp_expiration_at_config_time",
 };
 
 // This is a section for officially sanctioned runtime features which are too
