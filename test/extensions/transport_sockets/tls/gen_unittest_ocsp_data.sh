@@ -146,7 +146,7 @@ generate_ocsp_response good ca responder_key_hash -resp_key_id
 generate_config revoked ca
 generate_x509_cert revoked ca "-extensions must_staple"
 revoke_certificate revoked ca
-generate_ocsp_response revoked ca revoked -text
+generate_ocsp_response revoked ca revoked
 
 # Create OCSP response for cert unknown to the CA
 generate_ocsp_response good intermediate_ca unknown
