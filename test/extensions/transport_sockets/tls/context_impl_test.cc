@@ -598,7 +598,7 @@ TEST_F(SslServerContextImplOcspTest, TestFilenameOcspStapleConfigLoads) {
         filename: "{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der"
   ocsp_staple_policy: stapling_required
   )EOF";
-  auto server_context = loadConfigYaml(tls_context_yaml);
+  loadConfigYaml(tls_context_yaml);
 }
 
 /* // TODO(daniel-goldstein): How do I insert bytes :( */
@@ -636,7 +636,7 @@ TEST_F(SslServerContextImplOcspTest, TestInlineStringOcspStapleConfigLoads) {
   ocsp_staple_policy: stapling_required
   )EOF", base64_response);
 
-  auto server_context = loadConfigYaml(tls_context_yaml);
+  loadConfigYaml(tls_context_yaml);
 }
 
 TEST_F(SslServerContextImplOcspTest, TestMismatchedOcspStapleConfigFails) {
@@ -700,7 +700,24 @@ TEST_F(SslServerContextImplOcspTest, TestMustStapleCertWithoutStapleConfigFails)
   )EOF";
 
   EXPECT_THROW_WITH_MESSAGE(loadConfigYaml(tls_context_yaml),
-      EnvoyException, "Required OCSP response is missing from TLS context");
+      EnvoyException, "OCSP response is required for must-staple certificate");
+}
+
+TEST_F(SslServerContextImplOcspTest, TestMustStapleCertWithoutStapleFeatureFlagOff) {
+  const std::string tls_context_yaml = R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_cert.pem"
+      private_key:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_key.pem"
+  ocsp_staple_policy: skip_stapling_if_expired
+  )EOF";
+
+  TestScopedRuntime scoped_runtime;
+  Runtime::LoaderSingleton::getExisting()->mergeValues(
+      {{"envoy.reloadable_features.require_ocsp_response_for_must_staple_certs", "false"}});
+  loadConfigYaml(tls_context_yaml);
 }
 
 class SslServerContextImplTicketTest : public SslContextImplTest {

@@ -1060,8 +1060,11 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
 
     auto& ocsp_resp_bytes = tls_certificates[i].get().ocspStaple();
     if (ocsp_resp_bytes.empty()) {
-      if (ctx.is_must_staple_ ||
-          ocsp_staple_policy_ == envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::STAPLING_REQUIRED) {
+      if (Runtime::runtimeFeatureEnabled("envoy.reloadable_features.require_ocsp_response_for_must_staple_certs") &&
+          ctx.is_must_staple_) {
+        throw EnvoyException("OCSP response is required for must-staple certificate");
+      }
+      if (ocsp_staple_policy_ == envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::STAPLING_REQUIRED) {
         throw EnvoyException("Required OCSP response is missing from TLS context");
       }
     } else {

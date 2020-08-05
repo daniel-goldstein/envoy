@@ -5335,27 +5335,6 @@ TEST_P(SslSocketTest, TestConnectionFailsOnStapleRequiredAndOcspExpired) {
   testUtil(test_options.setExpectedServerStats("").setOcspStaplingEnabled(true));
 }
 
-TEST_P(SslSocketTest, TestConnectionFailsOnStapleRequiredAndNoOcspResponse) {
-  const std::string server_ctx_yaml = R"EOF(
-  common_tls_context:
-    tls_certificates:
-    - certificate_chain:
-        filename: "{{ test_tmpdir }}/ocsp_test_data/good_cert.pem"
-      private_key:
-        filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem"
-  ocsp_staple_policy: stapling_required
-  )EOF";
-
-  const std::string client_ctx_yaml = R"EOF(
-  common_tls_context:
-    tls_params:
-      cipher_suites:
-      - TLS_RSA_WITH_AES_128_GCM_SHA256
-)EOF";
-  TestUtilOptions test_options(client_ctx_yaml, server_ctx_yaml, false, GetParam());
-  testUtil(test_options.setExpectedServerStats("").setOcspStaplingEnabled(true));
-}
-
 TEST_P(SslSocketTest, TestConnectionSucceedsWhenRejectOnExpiredNoOcspResponse) {
   const std::string server_ctx_yaml = R"EOF(
   common_tls_context:
