@@ -5410,6 +5410,67 @@ TEST_P(SslSocketTest, TestConnectionFailsWhenCertIsMustStapleAndResponseExpired)
   testUtil(test_options.setExpectedServerStats(""));
 }
 
+TEST_P(SslSocketTest,
+    TestConnectionSucceedsForMustStapleCertRuntimeExpirationValidationOff) {
+  const std::string server_ctx_yaml = R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_cert.pem"
+      private_key:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_key.pem"
+      ocsp_staple:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_ocsp_resp.der"
+  ocsp_staple_policy: stapling_required
+  )EOF";
+
+  const std::string client_ctx_yaml = R"EOF(
+  common_tls_context:
+    tls_params:
+      cipher_suites:
+      - TLS_RSA_WITH_AES_128_GCM_SHA256
+)EOF";
+
+  TestScopedRuntime scoped_runtime;
+  Runtime::LoaderSingleton::getExisting()->mergeValues(
+      {{"envoy.reloadable_features.validate_ocsp_expiration_at_config_time", "false"},
+       {"envoy.reloadable_features.validate_ocsp_expiration_on_connection", "false"}});
+
+  TestUtilOptions test_options(client_ctx_yaml, server_ctx_yaml, true, GetParam());
+  std::string ocsp_response_path = "{{ test_tmpdir }}/ocsp_test_data/revoked_ocsp_resp.der";
+  std::string expected_response =
+      TestEnvironment::readFileToStringForTest(TestEnvironment::substitute(ocsp_response_path));
+
+  testUtil(test_options.setOcspStaplingEnabled(true).setExpectedOcspResponse(expected_response));
+}
+
+TEST_P(SslSocketTest, TestConnectionSucceedsForMustStapleCertNoValidationNoResponse) {
+  const std::string server_ctx_yaml = R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_cert.pem"
+      private_key:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_key.pem"
+  ocsp_staple_policy: skip_stapling_if_expired
+  )EOF";
+
+  const std::string client_ctx_yaml = R"EOF(
+  common_tls_context:
+    tls_params:
+      cipher_suites:
+      - TLS_RSA_WITH_AES_128_GCM_SHA256
+)EOF";
+
+  TestScopedRuntime scoped_runtime;
+  Runtime::LoaderSingleton::getExisting()->mergeValues(
+      {{"envoy.reloadable_features.require_ocsp_response_for_must_staple_certs", "false"},
+       {"envoy.reloadable_features.validate_ocsp_expiration_at_config_time", "false"},
+       {"envoy.reloadable_features.validate_ocsp_expiration_on_connection", "false"}});
+  TestUtilOptions test_options(client_ctx_yaml, server_ctx_yaml, true, GetParam());
+  testUtil(test_options.setOcspStaplingEnabled(true).setExpectedOcspResponse(""));
+}
+
 } // namespace Tls
 } // namespace TransportSockets
 } // namespace Extensions

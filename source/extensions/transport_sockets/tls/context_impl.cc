@@ -1352,7 +1352,8 @@ bool ServerContextImpl::isClientEcdsaCapable(const SSL_CLIENT_HELLO* ssl_client_
 }
 
 bool ServerContextImpl::TlsContext::stapleOcspResponseIfValid(SSL* ssl) const {
-  if (ocsp_response_ && !ocsp_response_->isExpired()) {
+  bool check_expiry = Runtime::runtimeFeatureEnabled("envoy.reloadable_features.validate_ocsp_expiration_on_connection");
+  if (ocsp_response_ && (!check_expiry || !ocsp_response_->isExpired())) {
     const std::string& ocsp_response_bytes = ocsp_response_->rawBytes();
     auto* resp = reinterpret_cast<const uint8_t*>(ocsp_response_bytes.c_str());
     return SSL_set_ocsp_response(ssl, resp, ocsp_response_bytes.size());
@@ -1362,15 +1363,23 @@ bool ServerContextImpl::TlsContext::stapleOcspResponseIfValid(SSL* ssl) const {
 }
 
 bool ServerContextImpl::passesOcspPolicy(const ContextImpl::TlsContext& ctx) {
-  if (ctx.is_must_staple_ && (!ctx.ocsp_response_ || ctx.ocsp_response_->isExpired())) {
+  bool check_expiry = Runtime::runtimeFeatureEnabled("envoy.reloadable_features.validate_ocsp_expiration_on_connection");
+
+  if (ctx.is_must_staple_ &&
+      (ctx.ocsp_response_ && check_expiry && ctx.ocsp_response_->isExpired())) {
     return false;
+  }
+
+  if (!check_expiry) {
+    return true;
   }
 
   switch(ocsp_staple_policy_) {
   case envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::SKIP_STAPLING_IF_EXPIRED:
     return true;
   case envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::STAPLING_REQUIRED:
-    return ctx.ocsp_response_ && !ctx.ocsp_response_->isExpired();
+    RELEASE_ASSERT(ctx.ocsp_response_, "OCSP response must be present for stapling_required");
+    return !ctx.ocsp_response_->isExpired();
   case envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::REJECT_CONNECTION_ON_EXPIRED:
     return !ctx.ocsp_response_ || !ctx.ocsp_response_->isExpired();
   default:
