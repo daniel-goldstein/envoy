@@ -52,7 +52,7 @@ public:
   virtual const std::string& passwordPath() const PURE;
 
   /**
-   * @return a string of ocsp response.
+   * @return a byte vector of ocsp response.
    */
   virtual const std::vector<uint8_t>& ocspStaple() const PURE;
 

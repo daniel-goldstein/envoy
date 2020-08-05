@@ -425,7 +425,6 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
       }
 #endif
     }
-
   }
 
   // use the server's cipher list preferences
@@ -1391,7 +1390,7 @@ bool ServerContextImpl::passesOcspPolicy(const ContextImpl::TlsContext& ctx) {
 enum ssl_select_cert_result_t
 ServerContextImpl::selectTlsContext(const SSL_CLIENT_HELLO* ssl_client_hello) {
   const bool client_ecdsa_capable = isClientEcdsaCapable(ssl_client_hello);
-  // Default to first context
+  // Fallback on first certificate.
   const TlsContext* selected_ctx = &tls_contexts_[0];
   for (const auto& ctx : tls_contexts_) {
     if (client_ecdsa_capable == ctx.is_ecdsa_) {
