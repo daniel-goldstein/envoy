@@ -1345,6 +1345,15 @@ bool ServerContextImpl::TlsContext::stapleOcspResponseIfValid(SSL* ssl) const {
 }
 
 bool ServerContextImpl::passesOcspPolicy(const ContextImpl::TlsContext& ctx) {
+  // The must staple extension, meaning the certificate promises to carry
+  // with it an OCSP staple. https://tools.ietf.org/html/rfc7633#section-6
+  std::string staple_request = "1.3.6.1.5.5.7.1.24";
+  auto must_staple = Utility::getX509ExtensionValue(*ctx.cert_chain_, staple_request);
+
+  if (must_staple && (!ctx.ocsp_response_ || ctx.ocsp_response_->isExpired())) {
+    return false;
+  }
+
   switch(ocsp_staple_policy_) {
   case envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::SKIP_STAPLING_IF_EXPIRED:
     return true;
@@ -1353,7 +1362,7 @@ bool ServerContextImpl::passesOcspPolicy(const ContextImpl::TlsContext& ctx) {
   case envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::REJECT_CONNECTION_ON_EXPIRED:
     return !ctx.ocsp_response_ || !ctx.ocsp_response_->isExpired();
   default:
-    // TODO(daniel-goldstein): Unreachable
+    // TODO(daniel-goldstein): Unreachable?
     return false;
   }
 }
@@ -1363,7 +1372,7 @@ ServerContextImpl::selectTlsContext(const SSL_CLIENT_HELLO* ssl_client_hello) {
   const bool client_ecdsa_capable = isClientEcdsaCapable(ssl_client_hello);
   // Default to first context
   const TlsContext* selected_ctx = &tls_contexts_[0];
-  // Try to find a better context that matches ECDSA & OCSP policy
+  // Try to find a context that matches ECDSA & OCSP policy
   for (const auto& ctx : tls_contexts_) {
     if (client_ecdsa_capable == ctx.is_ecdsa_ && passesOcspPolicy(ctx)) {
       selected_ctx = &ctx;

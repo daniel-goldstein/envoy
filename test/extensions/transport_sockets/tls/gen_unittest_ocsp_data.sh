@@ -84,6 +84,9 @@ subjectKeyIdentifier = hash
 authorityKeyIdentifier = keyid:always,issuer
 basicConstraints = critical, CA:true
 keyUsage = critical, digitalSignature, cRLSign, keyCertSign
+
+[ must_staple ]
+tlsfeature = status_request
 EOF
 ) > $1.cnf
 }
@@ -99,11 +102,11 @@ generate_ca() {
     -extensions v3_ca -extfile $1.cnf $EXTRA_ARGS
 }
 
-# $1=<certificate name> $2=<CA name>
+# $1=<certificate name> $2=<CA name> $3=[req args]
 generate_x509_cert() {
   openssl genrsa -out $1_key.pem 2048
   openssl req -new -key $1_key.pem -out $1_cert.csr -config $1.cnf -batch -sha256
-  openssl ca -config $1.cnf -notext -batch -in $1_cert.csr -out $1_cert.pem
+  openssl ca -config $1.cnf -notext -batch -in $1_cert.csr -out $1_cert.pem $3
 }
 
 # $1=<certificate name> $2=<CA name> $3=<test name> $4=[extra args]
@@ -141,9 +144,9 @@ generate_ocsp_response good ca responder_key_hash -resp_key_id
 
 # Generate and revoke a cert and create OCSP response
 generate_config revoked ca
-generate_x509_cert revoked ca
+generate_x509_cert revoked ca "-extensions must_staple"
 revoke_certificate revoked ca
-generate_ocsp_response revoked ca revoked
+generate_ocsp_response revoked ca revoked -text
 
 # Create OCSP response for cert unknown to the CA
 generate_ocsp_response good intermediate_ca unknown
