@@ -5431,43 +5431,6 @@ TEST_P(SslSocketTest, TestConnectionFailsWhenCertIsMustStapleAndResponseExpired)
   testUtil(test_options.setExpectedServerStats(""));
 }
 
-/* TEST_P(SslSocketTest, TestUseSecondCertWhenFirstFailsOcspPolicy) { */
-/*   const std::string server_ctx_yaml = R"EOF( */
-/*   common_tls_context: */
-/*     tls_certificates: */
-/*     - certificate_chain: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_cert.pem" */
-/*       private_key: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_key.pem" */
-/*       ocsp_staple: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_ocsp_resp.der" */
-/*     - certificate_chain: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/good_cert.pem" */
-/*       private_key: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem" */
-/*       ocsp_staple: */
-/*         filename: "{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der" */
-/*   ocsp_staple_policy: reject_connection_on_expired */
-/*   )EOF"; */
-
-/*   const std::string client_ctx_yaml = R"EOF( */
-/*   common_tls_context: */
-/*     tls_params: */
-/*       cipher_suites: */
-/*       - TLS_RSA_WITH_AES_128_GCM_SHA256 */
-/* )EOF"; */
-
-/*   TestScopedRuntime scoped_runtime; */
-/*   Runtime::LoaderSingleton::getExisting()->mergeValues( */
-/*       {{"envoy.reloadable_features.validate_ocsp_expiration_at_config_time", "false"}}); */
-/*   std::string ocsp_response_path = "{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der"; */
-/*   std::string expected_response = */
-/*       TestEnvironment::readFileToStringForTest(TestEnvironment::substitute(ocsp_response_path)); */
-
-/*   TestUtilOptions test_options(client_ctx_yaml, server_ctx_yaml, true, GetParam()); */
-/*   testUtil(test_options.setOcspStaplingEnabled(true).setExpectedOcspResponse(expected_response)); */
-/* } */
-
 } // namespace Tls
 } // namespace TransportSockets
 } // namespace Extensions

@@ -172,6 +172,7 @@ protected:
     std::string cert_chain_file_path_;
     Ocsp::OcspResponseWrapperPtr ocsp_response_;
     bool is_ecdsa_{};
+    bool is_must_staple_{};
     Ssl::PrivateKeyMethodProviderSharedPtr private_key_method_provider_{};
 
     std::string getCertChainFileName() const { return cert_chain_file_path_; };

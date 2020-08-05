@@ -572,8 +572,6 @@ TEST_F(SslContextImplTest, MustHaveSubjectOrSAN) {
                           EnvoyException, "has neither subject CN nor SAN names");
 }
 
-// TODO(daniel-goldstein): I copy and pasted this from TicketTest, be
-// a better samaritan.
 class SslServerContextImplOcspTest : public SslContextImplTest {
 public:
   Envoy::Ssl::ServerContextSharedPtr loadConfig(ServerContextConfigImpl& cfg) {
@@ -673,6 +671,36 @@ TEST_F(SslServerContextImplOcspTest, TestExpiredOcspStapleConfigFails) {
 
   EXPECT_THROW_WITH_MESSAGE(loadConfigYaml(tls_context_yaml),
       EnvoyException, "OCSP response has expired as of config time");
+}
+
+TEST_F(SslServerContextImplOcspTest, TestStaplingRequiredWithoutStapleConfigFails) {
+  const std::string tls_context_yaml = R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_cert.pem"
+      private_key:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/good_key.pem"
+  ocsp_staple_policy: stapling_required
+  )EOF";
+
+  EXPECT_THROW_WITH_MESSAGE(loadConfigYaml(tls_context_yaml),
+      EnvoyException, "Required OCSP response is missing from TLS context");
+}
+
+TEST_F(SslServerContextImplOcspTest, TestMustStapleCertWithoutStapleConfigFails) {
+  const std::string tls_context_yaml = R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_cert.pem"
+      private_key:
+        filename: "{{ test_tmpdir }}/ocsp_test_data/revoked_key.pem"
+  ocsp_staple_policy: skip_stapling_if_expired
+  )EOF";
+
+  EXPECT_THROW_WITH_MESSAGE(loadConfigYaml(tls_context_yaml),
+      EnvoyException, "Required OCSP response is missing from TLS context");
 }
 
 class SslServerContextImplTicketTest : public SslContextImplTest {

@@ -312,6 +312,12 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
           absl::StrCat("Failed to load certificate chain from ", ctx.cert_chain_file_path_));
     }
 
+    // The must staple extension means the certificate promises to carry
+    // with it an OCSP staple. https://tools.ietf.org/html/rfc7633#section-6
+    std::string staple_request_oid = "1.3.6.1.5.5.7.1.24";
+    auto must_staple = Utility::getX509ExtensionValue(*ctx.cert_chain_, staple_request_oid);
+    ctx.is_must_staple_ = must_staple != absl::nullopt;
+
     bssl::UniquePtr<EVP_PKEY> public_key(X509_get_pubkey(ctx.cert_chain_.get()));
     const int pkey_id = EVP_PKEY_id(public_key.get());
     if (!cert_pkey_ids.insert(pkey_id).second) {
@@ -420,24 +426,6 @@ ContextImpl::ContextImpl(Stats::Scope& scope, const Envoy::Ssl::ContextConfig& c
 #endif
     }
 
-    auto& ocsp_resp_bytes = tls_certificate.ocspStaple();
-    if (!ocsp_resp_bytes.empty()) {
-      // TODO(daniel-goldstein): Remove when wrapper takes a vec
-      std::string resp_bytes_str(ocsp_resp_bytes.begin(), ocsp_resp_bytes.end());
-      auto response = std::make_unique<Ocsp::OcspResponseWrapper>(
-          resp_bytes_str, time_source_);
-      if (!response->matchesCertificate(*ctx.cert_chain_)) {
-        throw EnvoyException("OCSP response does not match its TLS certificate");
-      }
-      if (!(response->getResponseStatus() == Ocsp::OcspResponseStatus::Successful)) {
-        throw EnvoyException("OCSP response was not successful");
-      }
-      if (Runtime::runtimeFeatureEnabled("envoy.reloadable_features.validate_ocsp_expiration_at_config_time") &&
-          response->isExpired()) {
-        throw EnvoyException("OCSP response has expired as of config time");
-      }
-      ctx.ocsp_response_ = std::move(response);
-    }
   }
 
   // use the server's cipher list preferences
@@ -1026,7 +1014,9 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
             ->selectTlsContext(client_hello);
       });
 
-  for (auto& ctx : tls_contexts_) {
+  const auto tls_certificates = config.tlsCertificates();
+  for (uint32_t i = 0; i < tls_certificates.size(); ++i) {
+    auto& ctx = tls_contexts_[i];
     if (config.certificateValidationContext() != nullptr &&
         !config.certificateValidationContext()->caCert().empty()) {
       ctx.addClientValidationContext(*config.certificateValidationContext(),
@@ -1067,6 +1057,30 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
     int rc =
         SSL_CTX_set_session_id_context(ctx.ssl_ctx_.get(), session_id.data(), session_id.size());
     RELEASE_ASSERT(rc == 1, Utility::getLastCryptoError().value_or(""));
+
+    auto& ocsp_resp_bytes = tls_certificates[i].get().ocspStaple();
+    if (ocsp_resp_bytes.empty()) {
+      if (ctx.is_must_staple_ ||
+          ocsp_staple_policy_ == envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::STAPLING_REQUIRED) {
+        throw EnvoyException("Required OCSP response is missing from TLS context");
+      }
+    } else {
+      // TODO(daniel-goldstein): Remove when wrapper takes a vec
+      std::string resp_bytes_str(ocsp_resp_bytes.begin(), ocsp_resp_bytes.end());
+      auto response = std::make_unique<Ocsp::OcspResponseWrapper>(
+          resp_bytes_str, time_source_);
+      if (!response->matchesCertificate(*ctx.cert_chain_)) {
+        throw EnvoyException("OCSP response does not match its TLS certificate");
+      }
+      if (!(response->getResponseStatus() == Ocsp::OcspResponseStatus::Successful)) {
+        throw EnvoyException("OCSP response was not successful");
+      }
+      if (Runtime::runtimeFeatureEnabled("envoy.reloadable_features.validate_ocsp_expiration_at_config_time") &&
+          response->isExpired()) {
+        throw EnvoyException("OCSP response has expired as of config time");
+      }
+      ctx.ocsp_response_ = std::move(response);
+    }
   }
 }
 
@@ -1345,12 +1359,7 @@ bool ServerContextImpl::TlsContext::stapleOcspResponseIfValid(SSL* ssl) const {
 }
 
 bool ServerContextImpl::passesOcspPolicy(const ContextImpl::TlsContext& ctx) {
-  // The must staple extension, meaning the certificate promises to carry
-  // with it an OCSP staple. https://tools.ietf.org/html/rfc7633#section-6
-  std::string staple_request = "1.3.6.1.5.5.7.1.24";
-  auto must_staple = Utility::getX509ExtensionValue(*ctx.cert_chain_, staple_request);
-
-  if (must_staple && (!ctx.ocsp_response_ || ctx.ocsp_response_->isExpired())) {
+  if (ctx.is_must_staple_ && (!ctx.ocsp_response_ || ctx.ocsp_response_->isExpired())) {
     return false;
   }
 
@@ -1372,15 +1381,13 @@ ServerContextImpl::selectTlsContext(const SSL_CLIENT_HELLO* ssl_client_hello) {
   const bool client_ecdsa_capable = isClientEcdsaCapable(ssl_client_hello);
   // Default to first context
   const TlsContext* selected_ctx = &tls_contexts_[0];
-  // Try to find a context that matches ECDSA & OCSP policy
   for (const auto& ctx : tls_contexts_) {
-    if (client_ecdsa_capable == ctx.is_ecdsa_ && passesOcspPolicy(ctx)) {
+    if (client_ecdsa_capable == ctx.is_ecdsa_) {
       selected_ctx = &ctx;
       break;
     }
   }
 
-  // Fail if the selected context still fails the OCSP policy (for the default case)
   if (!(passesOcspPolicy(*selected_ctx) &&
         selected_ctx->stapleOcspResponseIfValid(ssl_client_hello->ssl))) {
     return ssl_select_cert_error;
