@@ -5,9 +5,6 @@
 #include "extensions/transport_sockets/tls/ocsp/asn1_utility.h"
 #include "extensions/transport_sockets/tls/utility.h"
 
-#include "extensions/transport_sockets/tls/ocsp/asn1_utility.h"
-#include "extensions/transport_sockets/tls/utility.h"
-
 namespace Envoy {
 namespace Extensions {
 namespace TransportSockets {

@@ -615,7 +615,8 @@ TEST_F(SslServerContextImplOcspTest, TestInlineStringOcspStapleConfigLoads) {
       ocsp_staple:
        inline_bytes: "{}"
   ocsp_staple_policy: stapling_required
-  )EOF", base64_response);
+  )EOF",
+                                                   base64_response);
 
   loadConfigYaml(tls_context_yaml);
 }
@@ -633,8 +634,8 @@ TEST_F(SslServerContextImplOcspTest, TestMismatchedOcspStapleConfigFails) {
   ocsp_staple_policy: stapling_required
   )EOF";
 
-  EXPECT_THROW_WITH_MESSAGE(loadConfigYaml(tls_context_yaml),
-      EnvoyException, "OCSP response does not match its TLS certificate");
+  EXPECT_THROW_WITH_MESSAGE(loadConfigYaml(tls_context_yaml), EnvoyException,
+                            "OCSP response does not match its TLS certificate");
 }
 
 TEST_F(SslServerContextImplOcspTest, TestExpiredOcspStapleConfigFails) {
@@ -650,8 +651,8 @@ TEST_F(SslServerContextImplOcspTest, TestExpiredOcspStapleConfigFails) {
   ocsp_staple_policy: skip_stapling_if_expired
   )EOF";
 
-  EXPECT_THROW_WITH_MESSAGE(loadConfigYaml(tls_context_yaml),
-      EnvoyException, "OCSP response has expired as of config time");
+  EXPECT_THROW_WITH_MESSAGE(loadConfigYaml(tls_context_yaml), EnvoyException,
+                            "OCSP response has expired as of config time");
 }
 
 TEST_F(SslServerContextImplOcspTest, TestStaplingRequiredWithoutStapleConfigFails) {
@@ -665,8 +666,8 @@ TEST_F(SslServerContextImplOcspTest, TestStaplingRequiredWithoutStapleConfigFail
   ocsp_staple_policy: stapling_required
   )EOF";
 
-  EXPECT_THROW_WITH_MESSAGE(loadConfigYaml(tls_context_yaml),
-      EnvoyException, "Required OCSP response is missing from TLS context");
+  EXPECT_THROW_WITH_MESSAGE(loadConfigYaml(tls_context_yaml), EnvoyException,
+                            "Required OCSP response is missing from TLS context");
 }
 
 TEST_F(SslServerContextImplOcspTest, TestMustStapleCertWithoutStapleConfigFails) {
@@ -680,8 +681,8 @@ TEST_F(SslServerContextImplOcspTest, TestMustStapleCertWithoutStapleConfigFails)
   ocsp_staple_policy: skip_stapling_if_expired
   )EOF";
 
-  EXPECT_THROW_WITH_MESSAGE(loadConfigYaml(tls_context_yaml),
-      EnvoyException, "OCSP response is required for must-staple certificate");
+  EXPECT_THROW_WITH_MESSAGE(loadConfigYaml(tls_context_yaml), EnvoyException,
+                            "OCSP response is required for must-staple certificate");
 }
 
 TEST_F(SslServerContextImplOcspTest, TestMustStapleCertWithoutStapleFeatureFlagOff) {

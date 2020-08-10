@@ -266,10 +266,10 @@ TEST_F(Asn1OcspUtilityTest, ParseResponseBytesUnknownResponseTypeTest) {
                             "Unknown OCSP Response type with OID: 1.1.1.1.1.1.1");
 }
 
-} // namespace
-
 } // namespace Ocsp
+
 } // namespace Tls
 } // namespace TransportSockets
 } // namespace Extensions
+} // namespace Envoy
 } // namespace Envoy

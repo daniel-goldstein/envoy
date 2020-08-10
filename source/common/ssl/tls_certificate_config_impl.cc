@@ -13,16 +13,17 @@ namespace Envoy {
 namespace Ssl {
 
 namespace {
-  std::vector<uint8_t> readDerEncodedOcspStaple(const envoy::config::core::v3::DataSource& source,
-      Api::Api& api) {
-    std::string staple = Config::DataSource::read(source, true, api);
-    if (source.specifier_case() == envoy::config::core::v3::DataSource::SpecifierCase::kInlineString) {
-      staple = Base64::decode(staple);
-    }
-
-    return { staple.begin(), staple.end() };
+std::vector<uint8_t> readDerEncodedOcspStaple(const envoy::config::core::v3::DataSource& source,
+                                              Api::Api& api) {
+  std::string staple = Config::DataSource::read(source, true, api);
+  if (source.specifier_case() ==
+      envoy::config::core::v3::DataSource::SpecifierCase::kInlineString) {
+    staple = Base64::decode(staple);
   }
+
+  return {staple.begin(), staple.end()};
 }
+} // namespace
 
 static const std::string INLINE_STRING = "<inline>";
 

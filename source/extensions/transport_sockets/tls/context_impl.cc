@@ -1059,25 +1059,25 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
 
     auto& ocsp_resp_bytes = tls_certificates[i].get().ocspStaple();
     if (ocsp_resp_bytes.empty()) {
-      if (Runtime::runtimeFeatureEnabled("envoy.reloadable_features.require_ocsp_response_for_must_staple_certs") &&
+      if (Runtime::runtimeFeatureEnabled(
+              "envoy.reloadable_features.require_ocsp_response_for_must_staple_certs") &&
           ctx.is_must_staple_) {
         throw EnvoyException("OCSP response is required for must-staple certificate");
       }
-      if (ocsp_staple_policy_ == envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::STAPLING_REQUIRED) {
+      if (ocsp_staple_policy_ ==
+          envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::STAPLING_REQUIRED) {
         throw EnvoyException("Required OCSP response is missing from TLS context");
       }
     } else {
-      // TODO(daniel-goldstein): Remove when wrapper takes a vec
-      std::string resp_bytes_str(ocsp_resp_bytes.begin(), ocsp_resp_bytes.end());
-      auto response = std::make_unique<Ocsp::OcspResponseWrapper>(
-          resp_bytes_str, time_source_);
+      auto response = std::make_unique<Ocsp::OcspResponseWrapper>(ocsp_resp_bytes, time_source_);
       if (!response->matchesCertificate(*ctx.cert_chain_)) {
         throw EnvoyException("OCSP response does not match its TLS certificate");
       }
       if (!(response->getResponseStatus() == Ocsp::OcspResponseStatus::Successful)) {
         throw EnvoyException("OCSP response was not successful");
       }
-      if (Runtime::runtimeFeatureEnabled("envoy.reloadable_features.validate_ocsp_expiration_at_config_time") &&
+      if (Runtime::runtimeFeatureEnabled(
+              "envoy.reloadable_features.validate_ocsp_expiration_at_config_time") &&
           response->isExpired()) {
         throw EnvoyException("OCSP response has expired as of config time");
       }
@@ -1351,18 +1351,19 @@ bool ServerContextImpl::isClientEcdsaCapable(const SSL_CLIENT_HELLO* ssl_client_
 }
 
 bool ServerContextImpl::TlsContext::stapleOcspResponseIfValid(SSL* ssl) const {
-  bool check_expiry = Runtime::runtimeFeatureEnabled("envoy.reloadable_features.validate_ocsp_expiration_on_connection");
+  bool check_expiry = Runtime::runtimeFeatureEnabled(
+      "envoy.reloadable_features.validate_ocsp_expiration_on_connection");
   if (ocsp_response_ && (!check_expiry || !ocsp_response_->isExpired())) {
-    const std::string& ocsp_response_bytes = ocsp_response_->rawBytes();
-    auto* resp = reinterpret_cast<const uint8_t*>(ocsp_response_bytes.c_str());
-    return SSL_set_ocsp_response(ssl, resp, ocsp_response_bytes.size());
+    auto& resp_bytes = ocsp_response_->rawBytes();
+    return SSL_set_ocsp_response(ssl, resp_bytes.data(), resp_bytes.size());
   }
 
   return true;
 }
 
 bool ServerContextImpl::passesOcspPolicy(const ContextImpl::TlsContext& ctx) {
-  if (!Runtime::runtimeFeatureEnabled("envoy.reloadable_features.validate_ocsp_expiration_on_connection")) {
+  if (!Runtime::runtimeFeatureEnabled(
+          "envoy.reloadable_features.validate_ocsp_expiration_on_connection")) {
     return true;
   }
 
@@ -1370,13 +1371,15 @@ bool ServerContextImpl::passesOcspPolicy(const ContextImpl::TlsContext& ctx) {
     return false;
   }
 
-  switch(ocsp_staple_policy_) {
-  case envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::SKIP_STAPLING_IF_EXPIRED:
+  switch (ocsp_staple_policy_) {
+  case envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::
+      SKIP_STAPLING_IF_EXPIRED:
     return true;
   case envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::STAPLING_REQUIRED:
     RELEASE_ASSERT(ctx.ocsp_response_, "OCSP response must be present for stapling_required");
     return !ctx.ocsp_response_->isExpired();
-  case envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::REJECT_CONNECTION_ON_EXPIRED:
+  case envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::
+      REJECT_CONNECTION_ON_EXPIRED:
     return !ctx.ocsp_response_ || !ctx.ocsp_response_->isExpired();
   default:
     NOT_REACHED_GCOVR_EXCL_LINE;
