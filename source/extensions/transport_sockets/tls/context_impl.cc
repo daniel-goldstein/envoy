@@ -1362,15 +1362,12 @@ bool ServerContextImpl::TlsContext::stapleOcspResponseIfValid(SSL* ssl) const {
 }
 
 bool ServerContextImpl::passesOcspPolicy(const ContextImpl::TlsContext& ctx) {
-  bool check_expiry = Runtime::runtimeFeatureEnabled("envoy.reloadable_features.validate_ocsp_expiration_on_connection");
-
-  if (ctx.is_must_staple_ &&
-      (ctx.ocsp_response_ && check_expiry && ctx.ocsp_response_->isExpired())) {
-    return false;
+  if (!Runtime::runtimeFeatureEnabled("envoy.reloadable_features.validate_ocsp_expiration_on_connection")) {
+    return true;
   }
 
-  if (!check_expiry) {
-    return true;
+  if (ctx.is_must_staple_ && ctx.ocsp_response_ && ctx.ocsp_response_->isExpired()) {
+    return false;
   }
 
   switch(ocsp_staple_policy_) {
@@ -1382,8 +1379,7 @@ bool ServerContextImpl::passesOcspPolicy(const ContextImpl::TlsContext& ctx) {
   case envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::REJECT_CONNECTION_ON_EXPIRED:
     return !ctx.ocsp_response_ || !ctx.ocsp_response_->isExpired();
   default:
-    // TODO(daniel-goldstein): Unreachable?
-    return false;
+    NOT_REACHED_GCOVR_EXCL_LINE;
   }
 }
 

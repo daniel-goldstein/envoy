@@ -601,25 +601,6 @@ TEST_F(SslServerContextImplOcspTest, TestFilenameOcspStapleConfigLoads) {
   loadConfigYaml(tls_context_yaml);
 }
 
-/* // TODO(daniel-goldstein): How do I insert bytes :( */
-/* TEST_F(SslServerContextImplOcspTest, TestInlineBytesOcspStapleConfigLoads) { */
-/*   std::string der_response = TestEnvironment::readFileToStringForTest( */
-/*       TestEnvironment::substitute("{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der")); */
-/*   const std::string tls_context_yaml = fmt::format(R"EOF( */
-/*   common_tls_context: */
-/*     tls_certificates: */
-/*     - certificate_chain: */
-/*         filename: "{{{{ test_tmpdir }}}}/ocsp_test_data/good_cert.pem" */
-/*       private_key: */
-/*         filename: "{{{{ test_tmpdir }}}}/ocsp_test_data/good_key.pem" */
-/*       ocsp_staple: */
-/*        inline_bytes: "0x{}" */
-/*   ocsp_staple_policy: stapling_required */
-/*   )EOF", der_response); */
-
-/*   auto server_context = loadConfigYaml(tls_context_yaml); */
-/* } */
-
 TEST_F(SslServerContextImplOcspTest, TestInlineStringOcspStapleConfigLoads) {
   auto der_response = TestEnvironment::readFileToStringForTest(
       TestEnvironment::substitute("{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der"));
