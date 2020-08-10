@@ -19,13 +19,15 @@ namespace TransportSockets {
 namespace Tls {
 namespace Ocsp {
 
+namespace {
+
 namespace CertUtility = Envoy::Extensions::TransportSockets::Tls::Utility;
 
 class OcspFullResponseParsingTest : public testing::Test {
 public:
   static void SetUpTestSuite() { // NOLINT(readability-identifier-naming)
     TestEnvironment::exec({TestEnvironment::runfilesPath(
-        "test/extensions/transport_sockets/tls/gen_unittest_ocsp_data.sh")});
+        "test/extensions/transport_sockets/tls/ocsp/gen_unittest_ocsp_data.sh")});
   }
 
   std::string fullPath(std::string filename) {
@@ -160,12 +162,12 @@ public:
 };
 
 TEST_F(Asn1OcspUtilityTest, ParseResponseStatusTest) {
-  expectResponseStatus(0, OcspResponseStatus::SUCCESSFUL);
-  expectResponseStatus(1, OcspResponseStatus::MALFORMED_REQUEST);
-  expectResponseStatus(2, OcspResponseStatus::INTERNAL_ERROR);
-  expectResponseStatus(3, OcspResponseStatus::TRY_LATER);
-  expectResponseStatus(5, OcspResponseStatus::SIG_REQUIRED);
-  expectResponseStatus(6, OcspResponseStatus::UNAUTHORIZED);
+  expectResponseStatus(0, OcspResponseStatus::Successful);
+  expectResponseStatus(1, OcspResponseStatus::MalformedRequest);
+  expectResponseStatus(2, OcspResponseStatus::InternalError);
+  expectResponseStatus(3, OcspResponseStatus::TryLater);
+  expectResponseStatus(5, OcspResponseStatus::SigRequired);
+  expectResponseStatus(6, OcspResponseStatus::Unauthorized);
 }
 
 TEST_F(Asn1OcspUtilityTest, ParseMethodWrongTagTest) {
@@ -208,7 +210,7 @@ TEST_F(Asn1OcspUtilityTest, ParseOcspResponseBytesMissingTest) {
   CBS cbs;
   CBS_init(&cbs, data.data(), data.size());
   auto response = Asn1OcspUtility::parseOcspResponse(cbs);
-  EXPECT_EQ(response->status_, OcspResponseStatus::INTERNAL_ERROR);
+  EXPECT_EQ(response->status_, OcspResponseStatus::InternalError);
   EXPECT_TRUE(response->response_ == nullptr);
 }
 
