@@ -214,6 +214,7 @@ private:
   const std::vector<uint8_t> raw_bytes_;
   const std::unique_ptr<OcspResponse> response_;
   TimeSource& time_source_;
+  std::atomic_bool is_expired_{false};
 };
 
 using OcspResponseWrapperPtr = std::unique_ptr<OcspResponseWrapper>;

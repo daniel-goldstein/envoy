@@ -123,8 +123,15 @@ bool OcspResponseWrapper::matchesCertificate(X509& cert) {
 }
 
 bool OcspResponseWrapper::isExpired() {
+  if (is_expired_.load()) {
+    return true;
+  }
+
   auto& next_update = response_->response_->getNextUpdate();
-  return next_update == absl::nullopt || next_update < time_source_.systemTime();
+  bool expired = next_update == absl::nullopt || next_update < time_source_.systemTime();
+
+  is_expired_.store(expired);
+  return expired;
 }
 
 std::unique_ptr<OcspResponse> Asn1OcspUtility::parseOcspResponse(CBS& cbs) {
