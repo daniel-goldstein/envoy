@@ -42,7 +42,8 @@ namespace Tls {
   COUNTER(fail_verify_no_cert)                                                                     \
   COUNTER(fail_verify_error)                                                                       \
   COUNTER(fail_verify_san)                                                                         \
-  COUNTER(fail_verify_cert_hash)
+  COUNTER(fail_verify_cert_hash)                                                                   \
+  COUNTER(ocsp_staple_requests)
 
 /**
  * Wrapper struct for SSL stats. @see stats_macros.h

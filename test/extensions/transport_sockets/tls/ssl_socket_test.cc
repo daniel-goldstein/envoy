@@ -5256,7 +5256,10 @@ TEST_P(SslSocketTest, TestStaplesOcspResponseSuccess) {
   std::string expected_response =
       TestEnvironment::readFileToStringForTest(TestEnvironment::substitute(ocsp_response_path));
 
-  testUtil(test_options.setOcspStaplingEnabled(true).setExpectedOcspResponse(expected_response));
+  testUtil(test_options
+      .setOcspStaplingEnabled(true)
+      .setExpectedOcspResponse(expected_response)
+      .setExpectedServerStats("ssl.ocsp_staple_requests"));
 }
 
 TEST_P(SslSocketTest, TestNoOcspStapleWhenNotEnabledOnClient) {

@@ -653,6 +653,7 @@ void ContextImpl::logHandshake(SSL* ssl) const {
   if (!cert.get()) {
     stats_.no_certificate_.inc();
   }
+
 }
 
 std::vector<Ssl::PrivateKeyMethodProviderSharedPtr> ContextImpl::getPrivateKeyMethodProviders() {
@@ -1021,6 +1022,18 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
       ctx.addClientValidationContext(*config.certificateValidationContext(),
                                      config.requireClientCertificate());
     }
+
+    // We don't actually set the certficiate here, that is done above in
+    // SSL_CTX_set_select_certificate_cb. This callback is guaranteed to be
+    // called after processing extensions and is the only supported place
+    // to call `SSL_get_tlsext_status_type`.
+    SSL_CTX_set_cert_cb(ctx.ssl_ctx_.get(), [](SSL *ssl, void*) -> int {
+      if (SSL_get_tlsext_status_type(ssl) == TLSEXT_STATUSTYPE_ocsp) {
+        auto* ctx = static_cast<ServerContextImpl*>(SSL_CTX_get_app_data(SSL_get_SSL_CTX(ssl)));
+        ctx->stats_.ocsp_staple_requests_.inc();
+      }
+      return 1;
+    }, nullptr);
 
     if (!parsed_alpn_protocols_.empty()) {
       SSL_CTX_set_alpn_select_cb(
