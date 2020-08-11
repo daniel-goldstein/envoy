@@ -653,7 +653,6 @@ void ContextImpl::logHandshake(SSL* ssl) const {
   if (!cert.get()) {
     stats_.no_certificate_.inc();
   }
-
 }
 
 std::vector<Ssl::PrivateKeyMethodProviderSharedPtr> ContextImpl::getPrivateKeyMethodProviders() {
@@ -1034,25 +1033,20 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
                                      config.requireClientCertificate());
     }
 
-    // We don't actually set the certficiate here, that is done in
-    // `SSL_CTX_set_select_certificate_cb`, which is before most of the
-    // client hello processin. This callback is guaranteed to be
+    // We don't actually set the certficiate here. That is done in
+    // `SSL_CTX_set_select_certificate_cb`, which is called before most of the
+    // client hello processing. This callback is guaranteed to be
     // called after processing extensions and is the only supported place
     // to call `SSL_get_tlsext_status_type` to query whether an ocsp response
-    // was requested, since this is called after `SSL_CTX_set_select_certificate_cb`,
-    // an OCSP response should already be present in `ssl` if it is possible to staple one.
+    // was requested.
     SSL_CTX_set_cert_cb(ctx.ssl_ctx_.get(), [](SSL *ssl, void*) -> int {
       if (SSL_get_tlsext_status_type(ssl) == TLSEXT_STATUSTYPE_ocsp) {
         auto* ctx = static_cast<ServerContextImpl*>(SSL_CTX_get_app_data(SSL_get_SSL_CTX(ssl)));
         ctx->stats_.ocsp_staple_requests_.inc();
-        const uint8_t *ocsp_response = nullptr;
-        size_t num_bytes_to_read = 1;
-        SSL_SESSION* session = SSL_get_session(ssl);
-        if (session != nullptr) {
-          SSL_SESSION_get0_ocsp_response(session, &ocsp_response, &num_bytes_to_read);
-          if (ocsp_response != nullptr) {
-            ctx->stats_.ocsp_staple_responses_.inc();
-          }
+        // TODO(daniel-goldstein): I would like to query `ssl` here to see if
+        // ocsp_response was set, but there doesn't seem to be an easy way to do that
+        // since `SSL_get0_ocsp_response` is only callable from the client
+        ctx->stats_.ocsp_staple_responses_.inc();
         }
       }
       return 1;

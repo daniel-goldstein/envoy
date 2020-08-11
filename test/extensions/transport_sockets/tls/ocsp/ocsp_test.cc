@@ -117,7 +117,7 @@ TEST_F(OcspFullResponseParsingTest, NoResponseBodyTest) {
   std::vector<uint8_t> data = {
       // SEQUENCE
       0x30, 3,
-      // OcspResponseStatus - INTERNAL_ERROR
+      // OcspResponseStatus - InternalError
       0xau, 1, 2,
       // no response bytes
   };
@@ -188,7 +188,7 @@ TEST_F(Asn1OcspUtilityTest, ParseResponseDataBadResponderIdVariantTest) {
       0,
       1,
       0,
-      // Invalid Responeder ID tag 3
+      // Invalid Responder ID tag 3
       3,
       1,
       0,
@@ -203,7 +203,7 @@ TEST_F(Asn1OcspUtilityTest, ParseOcspResponseBytesMissingTest) {
   std::vector<uint8_t> data = {
       // SEQUENCE
       0x30, 3,
-      // OcspResponseStatus - INTERNAL_ERROR
+      // OcspResponseStatus - InternalError
       0xau, 1, 2,
       // no response bytes
   };
@@ -268,10 +268,10 @@ TEST_F(Asn1OcspUtilityTest, ParseResponseBytesUnknownResponseTypeTest) {
                             "Unknown OCSP Response type with OID: 1.1.1.1.1.1.1");
 }
 
-} // namespace Ocsp
+} // namespace
 
+} // namespace Ocsp
 } // namespace Tls
 } // namespace TransportSockets
 } // namespace Extensions
-} // namespace Envoy
 } // namespace Envoy

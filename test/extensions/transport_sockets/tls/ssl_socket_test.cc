@@ -359,8 +359,7 @@ void testUtil(const TestUtilOptions& options) {
   if (options.ocspStaplingEnabled()) {
     const SslSocketInfo* ssl_socket =
         dynamic_cast<const SslSocketInfo*>(client_connection->ssl().get());
-    SSL* client_ssl_socket = ssl_socket->ssl();
-    SSL_enable_ocsp_stapling(client_ssl_socket);
+    SSL_enable_ocsp_stapling(ssl_socket->ssl());
   }
 
   Network::MockConnectionCallbacks client_connection_callbacks;

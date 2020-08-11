@@ -13,6 +13,8 @@ namespace TransportSockets {
 namespace Tls {
 namespace Ocsp {
 
+namespace {
+
 class Asn1UtilityTest : public testing::Test {
 public:
   // DER encoding of a single TLV `ASN.1` element.
@@ -278,15 +280,6 @@ void cbbAddAsn1Int64(CBB* cbb, int64_t value) {
   CBB_flush(cbb);
 }
 
-TEST_F(Asn1UtilityTest, TestParseGeneralizedTimeInvalidTime) {
-  std::string ymd = "20070601Z";
-  CBS cbs;
-  bssl::UniquePtr<uint8_t> scoped(asn1Encode(cbs, ymd, CBS_ASN1_GENERALIZEDTIME));
-
-  EXPECT_THROW_WITH_REGEX(Asn1Utility::parseGeneralizedTime(cbs), EnvoyException,
-                          "Error parsing timestamp 20070601Z with format %E4Y%m%d%H%M%SZ");
-}
-
 TEST_F(Asn1UtilityTest, ParseIntegerTest) {
   std::vector<std::pair<int64_t, std::string>> integers = {
       {1, "01"},
@@ -298,9 +291,9 @@ TEST_F(Asn1UtilityTest, ParseIntegerTest) {
   CBS cbs;
   uint8_t* buf;
   size_t buf_len;
-  for (auto int_and_hex : integers) {
+  for (auto const& int_and_hex : integers) {
     ASSERT_TRUE(CBB_init(cbb.get(), 0));
-    ASSERT_TRUE(CBB_add_asn1_int64(cbb.get(), int_and_hex.first));
+    cbsAddAsn1Int64(cbb.get(), int_and_hex.first);
     ASSERT_TRUE(CBB_finish(cbb.get(), &buf, &buf_len));
 
     CBS_init(&cbs, buf, buf_len);
@@ -318,36 +311,6 @@ TEST_F(Asn1UtilityTest, ParseOctetStringTest) {
   bssl::UniquePtr<uint8_t> scoped(asn1Encode(cbs, data_str, CBS_ASN1_OCTETSTRING));
 
   EXPECT_EQ(data, absl::get<0>(Asn1Utility::parseOctetString(cbs)));
-}
-
-TEST_F(Asn1UtilityTest, ParseBitStringTest) {
-  std::vector<uint8_t> data = {0, 1, 2, 3};
-  std::vector<uint8_t> tlv = {0x3u, 4};
-  tlv.insert(tlv.end(), data.begin(), data.end());
-
-  CBS cbs;
-  CBS_init(&cbs, tlv.data(), tlv.size());
-  EXPECT_EQ(data, Asn1Utility::parseBitString(cbs));
-}
-
-TEST_F(Asn1UtilityTest, ParseAlgorithmIdentifierTest) {
-  std::string sha256 = "2.16.840.1.101.3.4.2.1";
-
-  bssl::ScopedCBB cbb;
-  CBB seq, oid;
-  ASSERT_TRUE(CBB_init(cbb.get(), 0));
-  ASSERT_TRUE(CBB_add_asn1(cbb.get(), &seq, CBS_ASN1_SEQUENCE));
-  ASSERT_TRUE(CBB_add_asn1(&seq, &oid, CBS_ASN1_OBJECT));
-  ASSERT_TRUE(CBB_add_asn1_oid_from_text(&oid, sha256.c_str(), sha256.size()));
-
-  uint8_t* buf;
-  size_t buf_len;
-  CBS cbs;
-  ASSERT_TRUE(CBB_finish(cbb.get(), &buf, &buf_len));
-  CBS_init(&cbs, buf, buf_len);
-  bssl::UniquePtr<uint8_t> scoped(buf);
-
-  EXPECT_EQ(sha256, Asn1Utility::parseAlgorithmIdentifier(cbs));
 }
 
 TEST_F(Asn1UtilityTest, SkipOptionalPresentAdvancesTest) {
@@ -376,6 +339,8 @@ TEST_F(Asn1UtilityTest, SkipOptionalMalformedTagTest) {
   EXPECT_EQ("Failed to parse ASN.1 element tag",
             absl::get<1>(Asn1Utility::skipOptional(cbs, CBS_ASN1_SEQUENCE)));
 }
+
+} // namespace
 
 } // namespace Ocsp
 } // namespace Tls
