@@ -1363,14 +1363,15 @@ bool ServerContextImpl::isClientEcdsaCapable(const SSL_CLIENT_HELLO* ssl_client_
   return false;
 }
 
-bool ServerContextImpl::TlsContext::stapleOcspResponseIfValid(SSL* ssl) const {
+bool ServerContextImpl::stapleOcspResponseIfValid(const ContextImpl::TlsContext& ctx, SSL* ssl) {
   bool check_expiry = Runtime::runtimeFeatureEnabled(
       "envoy.reloadable_features.validate_ocsp_expiration_on_connection");
-  if (ocsp_response_ && (!check_expiry || !ocsp_response_->isExpired())) {
-    auto& resp_bytes = ocsp_response_->rawBytes();
+  if (ctx.ocsp_response_ && (!check_expiry || !ctx.ocsp_response_->isExpired())) {
+    auto& resp_bytes = ctx.ocsp_response_->rawBytes();
     return SSL_set_ocsp_response(ssl, resp_bytes.data(), resp_bytes.size());
   }
 
+  stats_.ocsp_staple_omitted_.inc();
   return true;
 }
 
@@ -1412,7 +1413,8 @@ ServerContextImpl::selectTlsContext(const SSL_CLIENT_HELLO* ssl_client_hello) {
   }
 
   if (!(passesOcspPolicy(*selected_ctx) &&
-        selected_ctx->stapleOcspResponseIfValid(ssl_client_hello->ssl))) {
+        stapleOcspResponseIfValid(*selected_ctx, ssl_client_hello->ssl))) {
+    stats_.ocsp_staple_failed_.inc();
     return ssl_select_cert_error;
   }
 

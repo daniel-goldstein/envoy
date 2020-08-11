@@ -43,7 +43,9 @@ namespace Tls {
   COUNTER(fail_verify_error)                                                                       \
   COUNTER(fail_verify_san)                                                                         \
   COUNTER(fail_verify_cert_hash)                                                                   \
-  COUNTER(ocsp_staple_requests)
+  COUNTER(ocsp_staple_failed)                                                                      \
+  COUNTER(ocsp_staple_omitted)                                                                     \
+  COUNTER(ocsp_staple_requests)                                                                    \
 
 /**
  * Wrapper struct for SSL stats. @see stats_macros.h
@@ -180,7 +182,6 @@ protected:
     void addClientValidationContext(const Envoy::Ssl::CertificateValidationContextConfig& config,
                                     bool require_client_cert);
     bool isCipherEnabled(uint16_t cipher_id, uint16_t client_version);
-    bool stapleOcspResponseIfValid(SSL* ssl) const;
     Envoy::Ssl::PrivateKeyMethodProviderSharedPtr getPrivateKeyMethodProvider() {
       return private_key_method_provider_;
     }
@@ -255,6 +256,7 @@ private:
   // ClientHello details.
   enum ssl_select_cert_result_t selectTlsContext(const SSL_CLIENT_HELLO* ssl_client_hello);
   bool passesOcspPolicy(const ServerContextImpl::TlsContext& ctx);
+  bool stapleOcspResponseIfValid(const ServerContextImpl::TlsContext& ctx, SSL* ssl);
 
   SessionContextID generateHashForSessionContextId(const std::vector<std::string>& server_names);
 
