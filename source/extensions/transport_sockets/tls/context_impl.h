@@ -258,7 +258,7 @@ private:
   // ClientHello details.
   enum ssl_select_cert_result_t selectTlsContext(const SSL_CLIENT_HELLO* ssl_client_hello);
   bool passesOcspPolicy(const ServerContextImpl::TlsContext& ctx);
-  bool stapleOcspResponseIfValid(const ServerContextImpl::TlsContext& ctx, SSL* ssl);
+  void stapleOcspResponseIfValid(const ServerContextImpl::TlsContext& ctx, SSL* ssl);
 
   SessionContextID generateHashForSessionContextId(const std::vector<std::string>& server_names);
 

@@ -1047,7 +1047,6 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
         // ocsp_response was set, but there doesn't seem to be an easy way to do that
         // since `SSL_get0_ocsp_response` is only callable from the client
         ctx->stats_.ocsp_staple_responses_.inc();
-        }
       }
       return 1;
     }, nullptr);
@@ -1380,16 +1379,15 @@ bool ServerContextImpl::isClientEcdsaCapable(const SSL_CLIENT_HELLO* ssl_client_
   return false;
 }
 
-bool ServerContextImpl::stapleOcspResponseIfValid(const ContextImpl::TlsContext& ctx, SSL* ssl) {
+void ServerContextImpl::stapleOcspResponseIfValid(const ContextImpl::TlsContext& ctx, SSL* ssl) {
   bool check_expiry = Runtime::runtimeFeatureEnabled(
       "envoy.reloadable_features.validate_ocsp_expiration_on_connection");
   if (ctx.ocsp_response_ && (!check_expiry || !ctx.ocsp_response_->isExpired())) {
     auto& resp_bytes = ctx.ocsp_response_->rawBytes();
-    return SSL_set_ocsp_response(ssl, resp_bytes.data(), resp_bytes.size());
+    RELEASE_ASSERT(SSL_set_ocsp_response(ssl, resp_bytes.data(), resp_bytes.size()), "");
+  } else {
+    stats_.ocsp_staple_omitted_.inc();
   }
-
-  stats_.ocsp_staple_omitted_.inc();
-  return true;
 }
 
 bool ServerContextImpl::passesOcspPolicy(const ContextImpl::TlsContext& ctx) {
@@ -1407,7 +1405,7 @@ bool ServerContextImpl::passesOcspPolicy(const ContextImpl::TlsContext& ctx) {
       SKIP_STAPLING_IF_EXPIRED:
     return true;
   case envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::STAPLING_REQUIRED:
-    RELEASE_ASSERT(ctx.ocsp_response_, "OCSP response must be present for stapling_required");
+    RELEASE_ASSERT(ctx.ocsp_response_, "OCSP response must be provided for stapling_required");
     return !ctx.ocsp_response_->isExpired();
   case envoy::extensions::transport_sockets::tls::v3::DownstreamTlsContext::
       REJECT_CONNECTION_ON_EXPIRED:
@@ -1429,11 +1427,11 @@ ServerContextImpl::selectTlsContext(const SSL_CLIENT_HELLO* ssl_client_hello) {
     }
   }
 
-  if (!(passesOcspPolicy(*selected_ctx) &&
-        stapleOcspResponseIfValid(*selected_ctx, ssl_client_hello->ssl))) {
+  if (!passesOcspPolicy(*selected_ctx)) {
     stats_.ocsp_staple_failed_.inc();
     return ssl_select_cert_error;
   }
+  stapleOcspResponseIfValid(*selected_ctx, ssl_client_hello->ssl);
 
   RELEASE_ASSERT(SSL_set_SSL_CTX(ssl_client_hello->ssl, selected_ctx->ssl_ctx_.get()) != nullptr,
                  "");
