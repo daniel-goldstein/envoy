@@ -47,6 +47,11 @@ public:
    * context manager.
    */
   virtual PrivateKeyMethodManager& privateKeyMethodManager() PURE;
+
+  /**
+   * @return the number of seconds until the next OCSP response being managed will expire.
+   */
+  virtual uint64_t secondsUntilFirstOcspResponseExpires() const PURE;
 };
 
 using ContextManagerPtr = std::unique_ptr<ContextManager>;

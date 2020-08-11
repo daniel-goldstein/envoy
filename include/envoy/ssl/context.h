@@ -32,6 +32,11 @@ public:
    * @return certificate details conforming to proto admin.v2alpha.certs.
    */
   virtual std::vector<CertificateDetailsPtr> getCertChainInformation() const PURE;
+
+  /**
+   * @return the number of seconds in this context until the next OCSP response will expire.
+   */
+  virtual uint64_t secondsUntilFirstOcspResponseExpires() const PURE;
 };
 using ContextSharedPtr = std::shared_ptr<Context>;
 

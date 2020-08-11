@@ -210,6 +210,12 @@ public:
    */
   bool isExpired();
 
+  /**
+   * @returns the seconds until this OCSP response expires.
+   */
+  uint64_t secondsUntilExpiration();
+
+
 private:
   const std::vector<uint8_t> raw_bytes_;
   const std::unique_ptr<OcspResponse> response_;

@@ -789,6 +789,17 @@ size_t ContextImpl::daysUntilFirstCertExpires() const {
   return daysUntilExpiration;
 }
 
+uint64_t ContextImpl::secondsUntilFirstOcspResponseExpires() const {
+  uint64_t secs_until_expiration = std::numeric_limits<uint64_t>::max();
+  for (auto& ctx : tls_contexts_) {
+    secs_until_expiration = std::min<uint64_t>(
+        ctx.ocsp_response_->secondsUntilExpiration(),
+        secs_until_expiration);
+  }
+
+  return secs_until_expiration;
+}
+
 Envoy::Ssl::CertificateDetailsPtr ContextImpl::getCaCertInformation() const {
   if (ca_cert_ == nullptr) {
     return nullptr;
@@ -1023,14 +1034,26 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
                                      config.requireClientCertificate());
     }
 
-    // We don't actually set the certficiate here, that is done above in
-    // SSL_CTX_set_select_certificate_cb. This callback is guaranteed to be
+    // We don't actually set the certficiate here, that is done in
+    // `SSL_CTX_set_select_certificate_cb`, which is before most of the
+    // client hello processin. This callback is guaranteed to be
     // called after processing extensions and is the only supported place
-    // to call `SSL_get_tlsext_status_type`.
+    // to call `SSL_get_tlsext_status_type` to query whether an ocsp response
+    // was requested, since this is called after `SSL_CTX_set_select_certificate_cb`,
+    // an OCSP response should already be present in `ssl` if it is possible to staple one.
     SSL_CTX_set_cert_cb(ctx.ssl_ctx_.get(), [](SSL *ssl, void*) -> int {
       if (SSL_get_tlsext_status_type(ssl) == TLSEXT_STATUSTYPE_ocsp) {
         auto* ctx = static_cast<ServerContextImpl*>(SSL_CTX_get_app_data(SSL_get_SSL_CTX(ssl)));
         ctx->stats_.ocsp_staple_requests_.inc();
+        const uint8_t *ocsp_response = nullptr;
+        size_t num_bytes_to_read = 1;
+        SSL_SESSION* session = SSL_get_session(ssl);
+        if (session != nullptr) {
+          SSL_SESSION_get0_ocsp_response(session, &ocsp_response, &num_bytes_to_read);
+          if (ocsp_response != nullptr) {
+            ctx->stats_.ocsp_staple_responses_.inc();
+          }
+        }
       }
       return 1;
     }, nullptr);

@@ -45,6 +45,7 @@ namespace Tls {
   COUNTER(fail_verify_cert_hash)                                                                   \
   COUNTER(ocsp_staple_failed)                                                                      \
   COUNTER(ocsp_staple_omitted)                                                                     \
+  COUNTER(ocsp_staple_responses)                                                                   \
   COUNTER(ocsp_staple_requests)                                                                    \
 
 /**
@@ -103,6 +104,7 @@ public:
   size_t daysUntilFirstCertExpires() const override;
   Envoy::Ssl::CertificateDetailsPtr getCaCertInformation() const override;
   std::vector<Envoy::Ssl::CertificateDetailsPtr> getCertChainInformation() const override;
+  uint64_t secondsUntilFirstOcspResponseExpires() const override;
 
   std::vector<Ssl::PrivateKeyMethodProviderSharedPtr> getPrivateKeyMethodProviders();
 

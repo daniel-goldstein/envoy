@@ -5259,7 +5259,7 @@ TEST_P(SslSocketTest, TestStaplesOcspResponseSuccess) {
   testUtil(test_options
       .setOcspStaplingEnabled(true)
       .setExpectedOcspResponse(expected_response)
-      .setExpectedServerStats("ssl.ocsp_staple_requests"));
+      .setExpectedServerStats("ssl.ocsp_staple_responses"));
 }
 
 TEST_P(SslSocketTest, TestNoOcspStapleWhenNotEnabledOnClient) {
