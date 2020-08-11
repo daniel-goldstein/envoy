@@ -601,7 +601,7 @@ TEST_F(SslServerContextImplOcspTest, TestFilenameOcspStapleConfigLoads) {
   loadConfigYaml(tls_context_yaml);
 }
 
-TEST_F(SslServerContextImplOcspTest, TestInlineStringOcspStapleConfigLoads) {
+TEST_F(SslServerContextImplOcspTest, TestInlineBytesOcspStapleConfigLoads) {
   auto der_response = TestEnvironment::readFileToStringForTest(
       TestEnvironment::substitute("{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der"));
   auto base64_response = Base64::encode(der_response.c_str(), der_response.length(), true);
@@ -614,6 +614,26 @@ TEST_F(SslServerContextImplOcspTest, TestInlineStringOcspStapleConfigLoads) {
         filename: "{{{{ test_tmpdir }}}}/ocsp_test_data/good_key.pem"
       ocsp_staple:
        inline_bytes: "{}"
+  ocsp_staple_policy: stapling_required
+  )EOF",
+                                                   base64_response);
+
+  loadConfigYaml(tls_context_yaml);
+}
+
+TEST_F(SslServerContextImplOcspTest, TestInlineStringOcspStapleConfigLoads) {
+  auto der_response = TestEnvironment::readFileToStringForTest(
+      TestEnvironment::substitute("{{ test_tmpdir }}/ocsp_test_data/good_ocsp_resp.der"));
+  auto base64_response = Base64::encode(der_response.c_str(), der_response.length(), true);
+  const std::string tls_context_yaml = fmt::format(R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{{{ test_tmpdir }}}}/ocsp_test_data/good_cert.pem"
+      private_key:
+        filename: "{{{{ test_tmpdir }}}}/ocsp_test_data/good_key.pem"
+      ocsp_staple:
+       inline_string: "{}"
   ocsp_staple_policy: stapling_required
   )EOF",
                                                    base64_response);
