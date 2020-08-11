@@ -3,7 +3,6 @@
 #include "common/common/c_smart_ptr.h"
 
 #include "absl/strings/ascii.h"
-#include "absl/strings/str_cat.h"
 
 namespace Envoy {
 namespace Extensions {

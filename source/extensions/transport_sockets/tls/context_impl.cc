@@ -1043,10 +1043,6 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
       if (SSL_get_tlsext_status_type(ssl) == TLSEXT_STATUSTYPE_ocsp) {
         auto* ctx = static_cast<ServerContextImpl*>(SSL_CTX_get_app_data(SSL_get_SSL_CTX(ssl)));
         ctx->stats_.ocsp_staple_requests_.inc();
-        // TODO(daniel-goldstein): I would like to query `ssl` here to see if
-        // ocsp_response was set, but there doesn't seem to be an easy way to do that
-        // since `SSL_get0_ocsp_response` is only callable from the client
-        ctx->stats_.ocsp_staple_responses_.inc();
       }
       return 1;
     }, nullptr);
@@ -1382,6 +1378,7 @@ void ServerContextImpl::stapleOcspResponseIfValid(const ContextImpl::TlsContext&
   if (ctx.ocsp_response_ && (!check_expiry || !ctx.ocsp_response_->isExpired())) {
     auto& resp_bytes = ctx.ocsp_response_->rawBytes();
     RELEASE_ASSERT(SSL_set_ocsp_response(ssl, resp_bytes.data(), resp_bytes.size()), "");
+    stats_.ocsp_staple_responses_.inc();
   } else {
     stats_.ocsp_staple_omitted_.inc();
   }
