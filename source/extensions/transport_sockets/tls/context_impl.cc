@@ -1102,9 +1102,6 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
       if (!response->matchesCertificate(*ctx.cert_chain_)) {
         throw EnvoyException("OCSP response does not match its TLS certificate");
       }
-      if (!(response->getResponseStatus() == Ocsp::OcspResponseStatus::Successful)) {
-        throw EnvoyException("OCSP response was not successful");
-      }
       if (Runtime::runtimeFeatureEnabled(
               "envoy.reloadable_features.validate_ocsp_expiration_at_config_time") &&
           response->isExpired()) {

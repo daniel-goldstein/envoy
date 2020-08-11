@@ -94,7 +94,12 @@ OcspResponseWrapper::OcspResponseWrapper(std::vector<uint8_t> der_response, Time
     : raw_bytes_(std::move(der_response)), response_(readDerEncodedOcspResponse(raw_bytes_)),
       time_source_(time_source) {
 
-  if (response_->response_ == nullptr) {
+  if (response_->status_ != OcspResponseStatus::Successful) {
+    throw EnvoyException("OCSP response was unsuccessful");
+  }
+
+  if (response_->response_ == nullptr ||
+      response_->status_ != OcspResponseStatus::Successful) {
     throw EnvoyException("OCSP response has no body");
   }
 

@@ -690,6 +690,33 @@ TEST_F(SslServerContextImplOcspTest, TestStaplingRequiredWithoutStapleConfigFail
                             "Required OCSP response is missing from TLS context");
 }
 
+TEST_F(SslServerContextImplOcspTest, TestUnsuccessfulOcspResponseConfigFails) {
+  std::vector<uint8_t> data = {
+      // SEQUENCE
+      0x30, 3,
+      // OcspResponseStatus - InternalError
+      0xau, 1, 2,
+      // no response bytes
+  };
+  std::string der_response(data.begin(), data.end());
+  auto base64_response = Base64::encode(der_response.c_str(), der_response.length(), true);
+  const std::string tls_context_yaml = fmt::format(R"EOF(
+  common_tls_context:
+    tls_certificates:
+    - certificate_chain:
+        filename: "{{{{ test_tmpdir }}}}/ocsp_test_data/good_cert.pem"
+      private_key:
+        filename: "{{{{ test_tmpdir }}}}/ocsp_test_data/good_key.pem"
+      ocsp_staple:
+       inline_bytes: "{}"
+  ocsp_staple_policy: stapling_required
+  )EOF",
+                                                   base64_response);
+
+  EXPECT_THROW_WITH_MESSAGE(loadConfigYaml(tls_context_yaml), EnvoyException,
+                            "OCSP response was unsuccessful");
+}
+
 TEST_F(SslServerContextImplOcspTest, TestMustStapleCertWithoutStapleConfigFails) {
   const std::string tls_context_yaml = R"EOF(
   common_tls_context:
