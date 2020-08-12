@@ -293,7 +293,7 @@ TEST_F(Asn1UtilityTest, ParseIntegerTest) {
   size_t buf_len;
   for (auto const& int_and_hex : integers) {
     ASSERT_TRUE(CBB_init(cbb.get(), 0));
-    cbsAddAsn1Int64(cbb.get(), int_and_hex.first);
+    cbbAddAsn1Int64(cbb.get(), int_and_hex.first);
     ASSERT_TRUE(CBB_finish(cbb.get(), &buf, &buf_len));
 
     CBS_init(&cbs, buf, buf_len);

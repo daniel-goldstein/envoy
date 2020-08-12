@@ -5414,7 +5414,7 @@ TEST_P(SslSocketTest, TestConnectionFailsWhenCertIsMustStapleAndResponseExpired)
   testUtil(test_options.setExpectedServerStats("ssl.ocsp_staple_failed"));
 }
 
-TEST_P(SslSocketTest, TestConnectionSucceedsForMustStapleCertRuntimeExpirationValidationOff) {
+TEST_P(SslSocketTest, TestConnectionSucceedsForMustStapleCertExpirationValidationOff) {
   const std::string server_ctx_yaml = R"EOF(
   common_tls_context:
     tls_certificates:

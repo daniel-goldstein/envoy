@@ -98,7 +98,7 @@ OcspResponseWrapper::OcspResponseWrapper(std::vector<uint8_t> der_response, Time
     throw EnvoyException("OCSP response was unsuccessful");
   }
 
-  if (response_->response_ == nullptr || response_->status_ != OcspResponseStatus::Successful) {
+  if (response_->response_ == nullptr) {
     throw EnvoyException("OCSP response has no body");
   }
 
