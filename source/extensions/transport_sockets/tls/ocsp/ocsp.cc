@@ -140,14 +140,11 @@ bool OcspResponseWrapper::isExpired() {
 
 uint64_t OcspResponseWrapper::secondsUntilExpiration() {
   auto& next_update = response_->response_->getNextUpdate();
-  if (!next_update) {
+  auto now = time_source_.systemTime();
+  if (!next_update || next_update.value() <= now) {
     return 0;
   }
-
-  auto now = time_source_.systemTime();
-  auto secs_until_expiration =
-      std::chrono::duration_cast<std::chrono::seconds>(next_update.value() - now);
-  return secs_until_expiration.count();
+  return std::chrono::duration_cast<std::chrono::seconds>(next_update.value() - now).count();
 }
 
 std::unique_ptr<OcspResponse> Asn1OcspUtility::parseOcspResponse(CBS& cbs) {

@@ -69,6 +69,7 @@ TEST_F(OcspFullResponseParsingTest, GoodCertTest) {
 
   // Contains nextUpdate that is in the future
   EXPECT_FALSE(response_->isExpired());
+  EXPECT_GT(response_->secondsUntilExpiration(), 0);
 }
 
 TEST_F(OcspFullResponseParsingTest, RevokedCertTest) {
@@ -76,6 +77,7 @@ TEST_F(OcspFullResponseParsingTest, RevokedCertTest) {
   expectSuccessful();
   expectCertificateMatches("revoked_cert.pem");
   EXPECT_TRUE(response_->isExpired());
+  EXPECT_EQ(response_->secondsUntilExpiration(), 0);
 }
 
 TEST_F(OcspFullResponseParsingTest, UnknownCertTest) {
@@ -91,6 +93,7 @@ TEST_F(OcspFullResponseParsingTest, ExpiredResponseTest) {
   setup("good_ocsp_resp.der");
   // nextUpdate is present but in the past
   EXPECT_TRUE(response_->isExpired());
+  EXPECT_EQ(response_->secondsUntilExpiration(), 0);
 }
 
 TEST_F(OcspFullResponseParsingTest, ThisUpdateAfterNowTest) {
