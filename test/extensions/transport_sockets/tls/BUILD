@@ -73,8 +73,8 @@ envoy_cc_test(
     ],
     data = [
         "gen_unittest_certs.sh",
-        "//test/extensions/transport_sockets/tls/test_data:certs",
         "//test/extensions/transport_sockets/tls/ocsp:gen_ocsp_data",
+        "//test/extensions/transport_sockets/tls/test_data:certs",
     ],
     deps = [
         ":ssl_test_utils",
@@ -107,8 +107,8 @@ envoy_cc_test(
     ],
     data = [
         "gen_unittest_certs.sh",
-        "//test/extensions/transport_sockets/tls/test_data:certs",
         "gen_unittest_ocsp_data.sh",
+        "//test/extensions/transport_sockets/tls/test_data:certs",
     ],
     external_deps = ["ssl"],
     deps = [

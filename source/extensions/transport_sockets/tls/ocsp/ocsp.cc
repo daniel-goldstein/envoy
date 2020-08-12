@@ -98,8 +98,7 @@ OcspResponseWrapper::OcspResponseWrapper(std::vector<uint8_t> der_response, Time
     throw EnvoyException("OCSP response was unsuccessful");
   }
 
-  if (response_->response_ == nullptr ||
-      response_->status_ != OcspResponseStatus::Successful) {
+  if (response_->response_ == nullptr || response_->status_ != OcspResponseStatus::Successful) {
     throw EnvoyException("OCSP response has no body");
   }
 
@@ -147,7 +146,7 @@ uint64_t OcspResponseWrapper::secondsUntilExpiration() {
 
   auto now = time_source_.systemTime();
   auto secs_until_expiration =
-    std::chrono::duration_cast<std::chrono::seconds>(next_update.value() - now);
+      std::chrono::duration_cast<std::chrono::seconds>(next_update.value() - now);
   return secs_until_expiration.count();
 }
 

@@ -215,12 +215,11 @@ public:
    */
   uint64_t secondsUntilExpiration();
 
-
 private:
   const std::vector<uint8_t> raw_bytes_;
   const std::unique_ptr<OcspResponse> response_;
   TimeSource& time_source_;
-  std::atomic_bool is_expired_{false};
+  std::atomic<bool> is_expired_{false};
 };
 
 using OcspResponseWrapperPtr = std::unique_ptr<OcspResponseWrapper>;

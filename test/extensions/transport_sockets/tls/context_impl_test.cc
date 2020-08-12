@@ -480,6 +480,7 @@ TEST_F(SslContextImplTest, TestGetCertInformationWithExpiration) {
   std::string ca_cert_json =
       absl::StrCat(R"EOF({
  "path": "{{ test_rundir }}/test/extensions/transport_sockets/tls/test_data/san_dns3_cert.pem",
+
  "serial_number": ")EOF",
                    TEST_SAN_DNS3_CERT_SERIAL, R"EOF(",
  "subject_alt_names": [

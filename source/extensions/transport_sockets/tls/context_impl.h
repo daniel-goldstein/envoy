@@ -46,7 +46,7 @@ namespace Tls {
   COUNTER(ocsp_staple_failed)                                                                      \
   COUNTER(ocsp_staple_omitted)                                                                     \
   COUNTER(ocsp_staple_responses)                                                                   \
-  COUNTER(ocsp_staple_requests)                                                                    \
+  COUNTER(ocsp_staple_requests)
 
 /**
  * Wrapper struct for SSL stats. @see stats_macros.h
@@ -165,7 +165,9 @@ protected:
   void incCounter(const Stats::StatName name, absl::string_view value,
                   const Stats::StatName fallback) const;
 
-  Envoy::Ssl::CertificateDetailsPtr certificateDetails(X509* cert, const std::string& path) const;
+  Envoy::Ssl::CertificateDetailsPtr
+  certificateDetails(X509* cert, const std::string& path,
+                     const Ocsp::OcspResponseWrapperPtr& ocsp_response) const;
 
   struct TlsContext {
     // Each certificate specified for the context has its own SSL_CTX. SSL_CTXs

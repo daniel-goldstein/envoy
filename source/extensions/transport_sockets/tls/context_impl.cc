@@ -791,9 +791,8 @@ size_t ContextImpl::daysUntilFirstCertExpires() const {
 uint64_t ContextImpl::secondsUntilFirstOcspResponseExpires() const {
   uint64_t secs_until_expiration = std::numeric_limits<uint64_t>::max();
   for (auto& ctx : tls_contexts_) {
-    secs_until_expiration = std::min<uint64_t>(
-        ctx.ocsp_response_->secondsUntilExpiration(),
-        secs_until_expiration);
+    secs_until_expiration =
+        std::min<uint64_t>(ctx.ocsp_response_->secondsUntilExpiration(), secs_until_expiration);
   }
 
   return secs_until_expiration;
@@ -803,7 +802,7 @@ Envoy::Ssl::CertificateDetailsPtr ContextImpl::getCaCertInformation() const {
   if (ca_cert_ == nullptr) {
     return nullptr;
   }
-  return certificateDetails(ca_cert_.get(), getCaFileName());
+  return certificateDetails(ca_cert_.get(), getCaFileName(), nullptr);
 }
 
 std::vector<Envoy::Ssl::CertificateDetailsPtr> ContextImpl::getCertChainInformation() const {
@@ -813,19 +812,23 @@ std::vector<Envoy::Ssl::CertificateDetailsPtr> ContextImpl::getCertChainInformat
       continue;
     }
     cert_details.emplace_back(
-        certificateDetails(ctx.cert_chain_.get(), ctx.getCertChainFileName()));
+        certificateDetails(ctx.cert_chain_.get(), ctx.getCertChainFileName(), ctx.ocsp_response_));
   }
   return cert_details;
 }
 
-Envoy::Ssl::CertificateDetailsPtr ContextImpl::certificateDetails(X509* cert,
-                                                                  const std::string& path) const {
+Envoy::Ssl::CertificateDetailsPtr
+ContextImpl::certificateDetails(X509* cert, const std::string& path,
+                                const Ocsp::OcspResponseWrapperPtr& ocsp_response) const {
   Envoy::Ssl::CertificateDetailsPtr certificate_details =
       std::make_unique<envoy::admin::v3::CertificateDetails>();
   certificate_details->set_path(path);
   certificate_details->set_serial_number(Utility::getSerialNumberFromCertificate(*cert));
   certificate_details->set_days_until_expiration(
       Utility::getDaysUntilExpiration(cert, time_source_));
+  if (ocsp_response) {
+    certificate_details->set_seconds_until_ocsp_response_expiration(ocsp_response->secondsUntilExpiration());
+  }
   ProtobufWkt::Timestamp* valid_from = certificate_details->mutable_valid_from();
   TimestampUtil::systemClockToTimestamp(Utility::getValidFrom(*cert), *valid_from);
   ProtobufWkt::Timestamp* expiration_time = certificate_details->mutable_expiration_time();
@@ -1039,13 +1042,16 @@ ServerContextImpl::ServerContextImpl(Stats::Scope& scope,
     // called after processing extensions and is the only supported place
     // to call `SSL_get_tlsext_status_type` to query whether an ocsp response
     // was requested.
-    SSL_CTX_set_cert_cb(ctx.ssl_ctx_.get(), [](SSL *ssl, void*) -> int {
-      if (SSL_get_tlsext_status_type(ssl) == TLSEXT_STATUSTYPE_ocsp) {
-        auto* ctx = static_cast<ServerContextImpl*>(SSL_CTX_get_app_data(SSL_get_SSL_CTX(ssl)));
-        ctx->stats_.ocsp_staple_requests_.inc();
-      }
-      return 1;
-    }, nullptr);
+    SSL_CTX_set_cert_cb(
+        ctx.ssl_ctx_.get(),
+        [](SSL* ssl, void*) -> int {
+          if (SSL_get_tlsext_status_type(ssl) == TLSEXT_STATUSTYPE_ocsp) {
+            auto* ctx = static_cast<ServerContextImpl*>(SSL_CTX_get_app_data(SSL_get_SSL_CTX(ssl)));
+            ctx->stats_.ocsp_staple_requests_.inc();
+          }
+          return 1;
+        },
+        nullptr);
 
     if (!parsed_alpn_protocols_.empty()) {
       SSL_CTX_set_alpn_select_cb(
